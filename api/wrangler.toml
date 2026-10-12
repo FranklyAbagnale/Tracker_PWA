@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 REPO_OWNER = "FranklyAbagnale"
-REPO_NAME = "ParkingTracker-Clean"
+REPO_NAME = "Tracker_PWA"
 ALLOWED_STATES = "CA"
 # Set this to the app's origin once it is known, e.g. "https://franklyabagnale.github.io"
 ALLOWED_ORIGIN = "*"
