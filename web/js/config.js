@@ -1,8 +1,8 @@
-export const APP_NAME = 'ParkingTracker';
+export const APP_NAME = 'Tracker';
 
 // GitHub backend
 export const REPO_OWNER = 'FranklyAbagnale';
-export const REPO_NAME = 'ParkingTracker-Clean';
+export const REPO_NAME = 'Tracker_PWA';
 export const REPO_BRANCH = 'main';
 
 // Local search + ranking
