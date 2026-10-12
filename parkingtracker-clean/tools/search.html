@@ -1,0 +1,1196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- No network of any kind: the page can only read and write the folder you pick. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Tracker data tool</title>
+<style>
+  :root { --line:#e2e5ea; --muted:#6b7280; --bg:#f6f7f9; --blue:#1a6fe8; --red:#dc2626; --green:#15803d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:#1f2937; background:var(--bg); }
+  header.top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 16px; background:#0f172a; color:#fff; }
+  header.top h1 { margin:0 12px 0 0; font-size:17px; }
+  header.top .spacer { flex:1; }
+  header.top .status { color:#cbd5e1; font-size:13px; }
+  button, select, input, textarea { font:inherit; }
+  button { padding:6px 12px; border:1px solid #c5cad3; border-radius:6px; background:#fff; color:#1f2937; cursor:pointer; }
+  button:hover { background:#f1f3f6; }
+  button.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+  button.primary:hover { background:#155bc0; }
+  button.danger { color:var(--red); }
+  button:disabled { opacity:.5; cursor:default; }
+  header.top button { background:#1e293b; border-color:#334155; color:#fff; }
+  header.top button:hover { background:#334155; }
+  input[type=text], input[type=search], input[type=date], select, textarea { padding:6px 8px; border:1px solid #c5cad3; border-radius:6px; background:#fff; }
+  textarea { width:100%; resize:vertical; }
+  .hidden, [hidden] { display:none !important; }
+  #intro { max-width:760px; margin:40px auto; padding:0 20px; }
+  #intro h2 { margin-top:0; }
+  #intro code { background:#e8ebf0; padding:1px 5px; border-radius:4px; }
+  .banner { margin:10px 16px 0; padding:8px 12px; border-radius:6px; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .banner.ok { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
+  .banner.err { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+  .banner pre { margin:6px 0 0; padding:8px; background:#fff; border:1px solid var(--line); border-radius:6px; white-space:pre-wrap; }
+  #app { display:grid; grid-template-columns:310px minmax(0,1fr); gap:12px; padding:12px 16px 90px; align-items:start; }
+  aside#facets { position:sticky; top:8px; max-height:calc(100vh - 100px); overflow:auto; padding-right:4px; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:10px; }
+  .panel h3 { margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  #q { width:100%; font-size:15px; padding:9px 10px; }
+  .hint { font-size:12px; color:var(--muted); margin-top:4px; }
+  .dates { display:grid; grid-template-columns:auto 1fr 1fr; gap:4px 6px; align-items:center; font-size:12px; }
+  .dates input { width:100%; padding:4px 6px; }
+  details.facet { border-top:1px solid var(--line); padding:6px 0; }
+  details.facet:first-of-type { border-top:0; }
+  details.facet summary { cursor:pointer; font-weight:600; display:flex; gap:6px; align-items:center; }
+  details.facet summary .n { font-weight:400; color:var(--muted); font-size:12px; }
+  details.facet summary .sel { background:var(--blue); color:#fff; border-radius:9px; padding:0 7px; font-size:11px; font-weight:600; }
+  .fvals { max-height:230px; overflow:auto; margin-top:4px; }
+  .ffilter { width:100%; margin:4px 0; padding:3px 6px; font-size:12px; }
+  .fv { display:flex; align-items:center; gap:6px; padding:2px 4px; border-radius:4px; cursor:pointer; }
+  .fv:hover { background:#f1f3f6; }
+  .fv .t { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fv .c { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .fv.zero { opacity:.45; }
+  .fv .ren { visibility:hidden; padding:0 5px; font-size:12px; line-height:18px; }
+  .fv:hover .ren { visibility:visible; }
+  main#results { min-width:0; }
+  .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .toolbar .count { font-weight:600; margin-right:6px; }
+  .toolbar .spacer { flex:1; }
+  .chip { padding:3px 10px; border-radius:14px; border:1px solid #c5cad3; background:#fff; cursor:pointer; font-size:13px; }
+  .chip.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .chip .x { margin-left:4px; opacity:.8; }
+  .bulk { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:13px; }
+  .bulk select { padding:4px 6px; }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  th, td { text-align:left; padding:7px 9px; border-bottom:1px solid #eef0f3; vertical-align:top; }
+  th { position:sticky; top:0; background:#f3f4f6; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); cursor:pointer; white-space:nowrap; user-select:none; z-index:2; }
+  th.nosort { cursor:default; }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:#f6f9ff; }
+  tbody tr.sel { background:#eaf2ff; }
+  tbody tr.dirty td:first-child { box-shadow:inset 3px 0 0 #f59e0b; }
+  td.name strong { display:block; }
+  .snip { display:block; color:var(--muted); font-size:12px; margin-top:1px; }
+  mark { background:#fde68a; padding:0 1px; border-radius:2px; }
+  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; border:1px solid rgba(0,0,0,.2); vertical-align:-1px; }
+  .dot-confirmed{background:#dc2626}.dot-suspected{background:#f97316}.dot-cleared{background:#16a34a}.dot-unknown{background:#eab308}.dot-pigs{background:#2563eb}
+  .badge { display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:6px; vertical-align:1px; }
+  .badge.new { background:#dcfce7; color:#166534; }
+  .badge.updated { background:#fef3c7; color:#92400e; }
+  .badge.edited { background:#e0e7ff; color:#3730a3; }
+  .muted { color:var(--muted); }
+  .more { text-align:center; margin:10px; }
+  #detail { position:fixed; top:0; right:0; bottom:0; width:min(540px,100vw); background:#fff; border-left:1px solid var(--line); box-shadow:-8px 0 24px rgba(0,0,0,.12); overflow:auto; z-index:20; padding:14px 16px 0; }
+  @media (min-width: 1150px) {
+    body.has-detail #app { margin-right:556px; }
+    body.has-detail table th:nth-child(5), body.has-detail table td:nth-child(5),
+    body.has-detail table th:nth-child(7), body.has-detail table td:nth-child(7),
+    body.has-detail table th:nth-child(8), body.has-detail table td:nth-child(8),
+    body.has-detail table th:nth-child(9), body.has-detail table td:nth-child(9) { display:none; }
+  }
+  #detail h2 { margin:0 0 2px; font-size:18px; }
+  #detail .close { position:absolute; top:10px; right:12px; }
+  #detail label.f { display:block; margin:8px 0 2px; font-size:12px; color:var(--muted); }
+  #detail .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #detail input[type=text], #detail select { width:100%; }
+  #detail h3 { margin:16px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); border-top:1px solid var(--line); padding-top:10px; }
+  .plates .pr { display:grid; grid-template-columns:150px 1fr 110px auto; gap:6px; margin-bottom:6px; }
+  .plates .pr:has(.p-code:not([hidden])), .plates .pr:has(#n-code:not([hidden])) { grid-template-columns:150px 84px 1fr 110px auto; }
+  .plates .pr [hidden] { display:none; }
+  .sight { border:1px solid var(--line); border-radius:8px; padding:8px; margin-bottom:8px; }
+  .sight .meta { font-size:12px; color:var(--muted); margin-bottom:4px; word-break:break-word; }
+  .thumbs { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .thumbs img { height:90px; border-radius:6px; border:1px solid var(--line); cursor:zoom-in; }
+  .errs { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:6px 10px; border-radius:6px; margin:8px 0; }
+  .errs div { margin:2px 0; }
+  .actions { position:sticky; bottom:0; display:flex; gap:8px; margin:14px -16px 0; padding:10px 16px; background:#fff; border-top:1px solid var(--line); }
+  body.has-pending #detail .actions { bottom:56px; }
+  body.has-pending #detail { padding-bottom:56px; }
+  #pending { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 16px; background:#fffbeb; border-top:2px solid #f59e0b; }
+  #pending .spacer { flex:1; }
+  #zoom { position:fixed; inset:0; z-index:55; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; cursor:zoom-out; }
+  #zoom img { max-width:94vw; max-height:94vh; }
+  #modal { position:fixed; inset:0; z-index:60; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; }
+  #modal .box { background:#fff; border-radius:10px; padding:18px; width:min(520px,94vw); max-height:86vh; overflow:auto; }
+  #modal h3 { margin:0 0 8px; }
+  #modal ul { margin:6px 0; padding-left:20px; max-height:240px; overflow:auto; }
+  #modal .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+  progress { width:240px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Tracker data tool</h1>
+  <button id="btn-open" class="primary">Open repo folder…</button>
+  <button id="btn-reopen" hidden>Reopen last folder</button>
+  <button id="btn-reload" hidden title="Re-read the folder, e.g. after git pull">Reload from disk</button>
+  <button id="btn-validate" hidden>Validate all</button>
+  <span class="spacer"></span>
+  <span id="status" class="status"></span>
+</header>
+
+<div id="messages"></div>
+
+<section id="intro">
+  <h2>Search, review and fix the data in your local clone</h2>
+  <p>Open the folder where you cloned the ParkingTracker repo (the one that contains <code>data/</code> and <code>photos/</code>).
+     Everything runs in this page: it makes no network requests, and it only touches the folder you pick.</p>
+  <ul>
+    <li><b>New since last review</b>: records that appeared (or got new sightings) since you last pressed <i>Mark all reviewed</i>.</li>
+    <li><b>Filter any field</b>: type words (<code>make:ford -cleared "roof rack"</code>) and tick values in the lists on the left.</li>
+    <li><b>Edit</b>: click a record to fix its details, plates and sightings, or change many at once. Nothing is written until you press <i>Save to disk</i>.</li>
+    <li>Saving updates <code>data/index.json</code> too, so after <code>git push</code> no workflow has to run.</li>
+  </ul>
+  <p id="support" class="muted"></p>
+</section>
+
+<div id="app" hidden>
+  <aside id="facets">
+    <div class="panel">
+      <h3>Search text</h3>
+      <input id="q" type="search" placeholder="Search every field…" autocomplete="off" spellcheck="false">
+      <div class="hint">Words are ANDed. <code>"two words"</code>, <code>-exclude</code>, <code>field:value</code>
+        (name, color, make, model, year, body, flag, plate, state, notes, features, observer, source, by, key).</div>
+    </div>
+    <div class="panel">
+      <h3>Dates</h3>
+      <div class="dates">
+        <span></span><span class="muted">from</span><span class="muted">to</span>
+        <span>First seen</span><input type="date" id="first-from"><input type="date" id="first-to">
+        <span>Last seen</span><input type="date" id="last-from"><input type="date" id="last-to">
+      </div>
+    </div>
+    <div class="panel" id="facet-list"></div>
+  </aside>
+  <main id="results">
+    <div class="toolbar">
+      <span class="count" id="count"></span>
+      <span id="status-chips"></span>
+      <button id="btn-clear">Clear filters</button>
+      <span class="spacer"></span>
+      <button id="btn-csv">Download CSV</button>
+      <button id="btn-reviewed" title="Remember what is here now, so only later changes show as new">Mark all reviewed</button>
+    </div>
+    <div class="panel bulk" id="bulk"></div>
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="more" id="more"></div>
+  </main>
+</div>
+
+<aside id="detail" hidden></aside>
+
+<div id="pending" hidden></div>
+<div id="zoom" hidden></div>
+<div id="modal" hidden></div>
+
+<script>
+'use strict';
+
+// ====================== constants (kept in sync with web/js/config.js and schema/) ======================
+const FLAGS = ['unknown', 'suspected', 'confirmed', 'cleared', 'pigs'];
+const BODY_STYLES = ['sedan', 'suv', 'truck', 'van', 'coupe', 'hatchback', 'unknown'];
+const PLATE_TYPES = ['standard', 'dealer', 'temporary', 'vanity'];
+const SITE_STATUSES = ['verified', 'not_found', 'wrong'];
+// Keep in sync with web/js/config.js and scripts/plate_states.py (tests/fixtures/state_cases.json is checked against all three).
+// 2 letters: US state/territory or Canadian province; 3 letters: Mexican state (ISO 3166-2:MX); USG / GOV: federal and
+// government plates, which may carry a code after a dash (USG-G42, GOV-DHS); XX: not known.
+const STATES = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR', 'VI', 'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT', 'AGU', 'BCN', 'BCS', 'CAM', 'CHP', 'CHH', 'CMX', 'COA', 'COL', 'DUR', 'GUA', 'GRO', 'HID', 'JAL', 'MEX', 'MIC', 'MOR', 'NAY', 'NLE', 'OAX', 'PUE', 'QUE', 'ROO', 'SLP', 'SIN', 'SON', 'TAB', 'TAM', 'TLA', 'VER', 'YUC', 'ZAC', 'USG', 'GOV', 'XX'];
+const FEDERAL = ['USG', 'GOV'];
+const STATE_LABELS = { AGU: 'Aguascalientes', BCN: 'Baja California', BCS: 'Baja California Sur', CAM: 'Campeche', CHP: 'Chiapas', CHH: 'Chihuahua', CMX: 'Ciudad de México', COA: 'Coahuila', COL: 'Colima', DUR: 'Durango', GUA: 'Guanajuato', GRO: 'Guerrero', HID: 'Hidalgo', JAL: 'Jalisco', MEX: 'Estado de México', MIC: 'Michoacán', MOR: 'Morelos', NAY: 'Nayarit', NLE: 'Nuevo León', OAX: 'Oaxaca', PUE: 'Puebla', QUE: 'Querétaro', ROO: 'Quintana Roo', SLP: 'San Luis Potosí', SIN: 'Sinaloa', SON: 'Sonora', TAB: 'Tabasco', TAM: 'Tamaulipas', TLA: 'Tlaxcala', VER: 'Veracruz', YUC: 'Yucatán', ZAC: 'Zacatecas', USG: 'US Government (federal)', GOV: 'Government' };
+const stateName = (c) => (c === 'XX' ? 'XX (unknown)' : STATE_LABELS[c] ? `${c} · ${STATE_LABELS[c]}` : c);
+const stateOpts = (selected) => STATES.map((c) => `<option value="${c}"${c === selected ? ' selected' : ''}>${stateName(c)}</option>`).join('');
+const splitAlias = (a) => { const i = String(a).lastIndexOf('-'); return i < 0 ? ['', a] : [a.slice(0, i), a.slice(i + 1)]; }; // the plate has no dash
+const isState = (s) => STATES.includes(s) || /^(?:USG|GOV)-[A-Z0-9]{1,8}$/.test(s);
+const stateParts = (s) => { const i = String(s).indexOf('-'); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i + 1)]; };
+const stateFrom = (sel, code) => (FEDERAL.includes(sel.value) && code && code.value.trim() ? `${sel.value}-${code.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}` : sel.value);
+const PAGE = 200;
+const ALIAS_RE = /^(?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]{1,20}$/;
+const VEHICLE_ALLOWED = ['vehicleKey','displayName','color','make','model','siteChecks','year','bodyStyle','distinguishing','distinguishingNotes','vin','plateAliases','flag','sightings','firstSeen','lastSeen','plateLookup','possibleDuplicate','lastUpdatedBy','editedAt'];
+const VEHICLE_REQUIRED = ['vehicleKey','displayName','color','make','bodyStyle','distinguishing','plateAliases','flag','sightings','firstSeen','lastSeen'];
+const SIGHTING_ALLOWED = ['id','timestamp','recordedAt','editedAt','location','photos','flag','notes','source','observer'];
+
+// ====================== small helpers ======================
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clean = (s) => String(s ?? '').trim().replace(/\s+/g, ' ');
+const NONE = '(none)';
+const ser = (obj) => `${JSON.stringify(obj, null, 2)}\n`;
+const tsOf = (v) => { const t = Date.parse(v); return Number.isFinite(t) ? t : 0; };
+const day = (v) => (v ? String(v).slice(0, 10) : '');
+const tidyWord = (v) => { const t = clean(v); return t && t === t.toLowerCase() ? t.charAt(0).toUpperCase() + t.slice(1) : t; };
+const buildDisplayName = (color, make, model) => [tidyWord(color), tidyWord(make), tidyWord(model)].filter(Boolean).join(' ');
+const nowIso = () => new Date().toISOString();
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+function setStatus(text) { $('status').textContent = text || ''; }
+function banner(html, kind = '', sticky = false) {
+  const div = document.createElement('div');
+  div.className = `banner ${kind}`;
+  div.innerHTML = html;
+  const box = $('messages');
+  if (!sticky) box.textContent = '';
+  box.appendChild(div);
+  return div;
+}
+function clearBanners() { $('messages').textContent = ''; }
+
+// ====================== tiny IndexedDB key-value store (remembers the folder and what you reviewed) ======================
+const idb = {
+  open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('tracker-data-tool', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async get(key) {
+    try {
+      const db = await this.open();
+      return await new Promise((resolve, reject) => { const r = db.transaction('kv').objectStore('kv').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+    } catch { return undefined; }
+  },
+  async set(key, value) {
+    try {
+      const db = await this.open();
+      await new Promise((resolve, reject) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(value, key); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+      return true;
+    } catch { return false; }
+  }
+};
+
+// ====================== file system layer ======================
+async function sub(dir, path, create = false) {
+  let d = dir;
+  for (const part of path.split('/').filter(Boolean)) d = await d.getDirectoryHandle(part, { create });
+  return d;
+}
+async function listFiles(dir) {
+  const out = [];
+  for await (const entry of dir.values()) if (entry.kind === 'file') out.push(entry);
+  return out;
+}
+const readText = async (fh) => (await fh.getFile()).text();
+async function writeText(dir, name, text) {
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(text);
+  await w.close();
+}
+async function inBatches(items, size, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) out.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+  return out;
+}
+
+// ====================== state ======================
+let root = null;               // FileSystemDirectoryHandle of the repo clone
+let folderName = '';
+let vDir = null, pDir = null;  // data/vehicles, data/plates
+const recs = new Map();        // vehicleKey -> { key, v, orig, d }
+const plates = new Map();      // alias -> { p, orig, deleted }
+let indexText = '';
+let baseline = null;           // { savedAt, v: { key: {n, ls} } } from the last "Mark all reviewed"
+const dirtyV = new Set();
+const dirtyP = new Set();
+const ui = {
+  q: '', facets: {}, facetFilter: {}, firstFrom: '', firstTo: '', lastFrom: '', lastTo: '',
+  sortKey: 'last', sortDir: -1, limit: PAGE, selected: new Set(), open: null, openFacets: new Set(['status', 'flag'])
+};
+let filtered = [];
+
+// ====================== derived fields ======================
+function located(s) { return s.location && typeof s.location === 'object' && Number.isFinite(s.location.lat) && Number.isFinite(s.location.lng); }
+
+function derive(rec) {
+  const v = rec.v;
+  const sightings = Array.isArray(v.sightings) ? v.sightings : [];
+  const aliases = Array.isArray(v.plateAliases) ? v.plateAliases : [];
+  const split = splitAlias;
+  const states = [...new Set(aliases.map((a) => split(a)[0]).filter(Boolean))];
+  const ptypes = [...new Set(aliases.map((a) => plates.get(a)?.p?.plateType).filter(Boolean))];
+  const uniq = (arr) => [...new Set(arr.filter((x) => x !== null && x !== undefined && String(x).trim() !== ''))];
+  const observers = uniq(sightings.map((s) => s.observer));
+  const sources = uniq(sightings.map((s) => String(s.source ?? '').split(':')[0]));
+  const checks = Object.entries(v.siteChecks || {}).map(([site, c]) => `${site}: ${c?.status}`);
+  const notes = sightings.map((s) => s.notes || '').filter(Boolean).join('\n');
+  const d = {
+    name: v.displayName || '', color: v.color || '', make: v.make || '', model: v.model || '',
+    year: v.year ? String(v.year) : '', body: v.bodyStyle || '', flag: v.flag || 'unknown',
+    plates: aliases, states, ptypes, feats: Array.isArray(v.distinguishing) ? v.distinguishing : [],
+    fnotes: v.distinguishingNotes || '', notes, nSight: sightings.length,
+    nPhoto: sightings.reduce((n, s) => n + (s.photos ? s.photos.length : 0), 0),
+    first: v.firstSeen || '', last: v.lastSeen || '', observers, sources, by: v.lastUpdatedBy || '',
+    hasLoc: sightings.some(located), dup: Boolean(v.possibleDuplicate), checks
+  };
+  d.f = {
+    name: d.name, color: d.color, make: d.make, model: d.model, year: d.year, body: d.body, flag: d.flag,
+    plate: aliases.join(' '), state: states.join(' '), notes, features: `${d.feats.join(' ')} ${d.fnotes}`,
+    observer: observers.join(' '), source: sources.join(' '), by: d.by, key: rec.key, type: ptypes.join(' ')
+  };
+  for (const k of Object.keys(d.f)) d.f[k] = d.f[k].toLowerCase();
+  d.f.feature = d.f.features;
+  d.f.bodystyle = d.f.body;
+  d.hay = Object.entries(d.f).filter(([k]) => !['feature', 'bodystyle', 'status', 'type', 'state'].includes(k)).map(([, x]) => x).join('\n');
+  rec.d = d;
+  d.status = statusOf(rec);
+  d.f.status = d.status;
+}
+
+function statusOf(rec) {
+  if (!baseline) return 'reviewed';
+  const b = baseline.v[rec.key];
+  if (!b) return 'new';
+  return b.n !== rec.d.nSight || b.ls !== rec.d.last ? 'updated' : 'reviewed';
+}
+function refreshStatuses() { for (const rec of recs.values()) { rec.d.status = statusOf(rec); rec.d.f.status = rec.d.status; } }
+
+// ====================== validation (a convenience port of schema/*.json; `npm run validate` is the authority) ======================
+function validateVehicle(v, key) {
+  const e = [];
+  const isStr = (x) => typeof x === 'string';
+  const nullableStr = (x) => x === null || x === undefined || isStr(x);
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return ['record is not an object'];
+  for (const k of VEHICLE_REQUIRED) if (!(k in v)) e.push(`missing required field "${k}"`);
+  for (const k of Object.keys(v)) if (!VEHICLE_ALLOWED.includes(k)) e.push(`unknown field "${k}"`);
+  if (!/^VEH_[0-9a-f]{8}$/.test(v.vehicleKey || '')) e.push('vehicleKey must look like VEH_ + 8 hex characters');
+  if (key && v.vehicleKey !== key) e.push('vehicleKey does not match the file name');
+  for (const k of ['displayName', 'color', 'make']) if (!isStr(v[k]) || !v[k].trim()) e.push(`${k} must not be empty`);
+  if (!nullableStr(v.model)) e.push('model must be text or empty');
+  if (v.year !== null && v.year !== undefined && !(Number.isInteger(v.year) && v.year >= 1900 && v.year <= 2100)) e.push('year must be a whole number from 1900 to 2100, or empty');
+  if (!BODY_STYLES.includes(v.bodyStyle)) e.push(`body style must be one of ${BODY_STYLES.join(', ')}`);
+  if (!FLAGS.includes(v.flag)) e.push(`flag must be one of ${FLAGS.join(', ')}`);
+  if (!Array.isArray(v.distinguishing) || v.distinguishing.some((x) => !isStr(x) || !x.trim())) e.push('features must be a list of non-empty text');
+  if (!nullableStr(v.distinguishingNotes)) e.push('feature notes must be text or empty');
+  if (!nullableStr(v.vin)) e.push('vin must be text or empty');
+  if (!Array.isArray(v.plateAliases)) e.push('plateAliases must be a list');
+  else {
+    if (v.plateAliases.some((a) => !ALIAS_RE.test(a))) e.push('every plate must look like ST-ABC123 (state, dash, up to 20 letters/digits)');
+    if (new Set(v.plateAliases).size !== v.plateAliases.length) e.push('a plate is listed twice');
+  }
+  for (const k of ['firstSeen', 'lastSeen']) if (!isStr(v[k]) || Number.isNaN(Date.parse(v[k]))) e.push(`${k} must be a date-time`);
+  if (v.possibleDuplicate !== undefined && typeof v.possibleDuplicate !== 'boolean') e.push('possibleDuplicate must be true or false');
+  if (v.lastUpdatedBy !== undefined && v.lastUpdatedBy !== null && (!isStr(v.lastUpdatedBy) || v.lastUpdatedBy.length > 40)) e.push('lastUpdatedBy must be text of at most 40 characters');
+  if (v.siteChecks !== undefined) {
+    if (!v.siteChecks || typeof v.siteChecks !== 'object') e.push('siteChecks must be an object');
+    else for (const [site, c] of Object.entries(v.siteChecks)) {
+      if (!/^[a-z]{2,20}$/.test(site)) e.push(`siteChecks name "${site}" is not allowed`);
+      if (!c || !SITE_STATUSES.includes(c.status) || !isStr(c.checkedAt)) e.push(`siteChecks.${site} needs a status and checkedAt`);
+    }
+  }
+  if (!Array.isArray(v.sightings) || v.sightings.length < 1) e.push('at least one sighting is required');
+  else v.sightings.forEach((s, i) => {
+    const at = `sighting ${i + 1}`;
+    for (const k of ['id', 'timestamp', 'photos', 'flag']) if (!(k in s)) e.push(`${at}: missing "${k}"`);
+    for (const k of Object.keys(s)) if (!SIGHTING_ALLOWED.includes(k)) e.push(`${at}: unknown field "${k}"`);
+    if (!/^S_[0-9a-f]{8}$/.test(s.id || '')) e.push(`${at}: id must look like S_ + 8 hex characters`);
+    if (!isStr(s.timestamp) || Number.isNaN(Date.parse(s.timestamp))) e.push(`${at}: timestamp must be a date-time`);
+    if (!FLAGS.includes(s.flag)) e.push(`${at}: flag must be one of ${FLAGS.join(', ')}`);
+    if (!Array.isArray(s.photos) || s.photos.some((p) => !/^photos\/[A-Za-z0-9_.-]+\.jpg$/.test(p))) e.push(`${at}: photos must be photos/<name>.jpg paths`);
+    if (!nullableStr(s.notes) || !nullableStr(s.source)) e.push(`${at}: notes and source must be text or empty`);
+    if (s.observer !== undefined && s.observer !== null && (!isStr(s.observer) || s.observer.length > 40)) e.push(`${at}: observer must be at most 40 characters`);
+    if (s.location !== undefined && s.location !== null) {
+      const l = s.location;
+      if (typeof l !== 'object' || !Number.isFinite(l.lat) || !Number.isFinite(l.lng) || l.lat < -90 || l.lat > 90 || l.lng < -180 || l.lng > 180) e.push(`${at}: location needs lat -90..90 and lng -180..180`);
+    }
+  });
+  return e;
+}
+
+function validatePlate(p, alias) {
+  const e = [];
+  for (const k of ['plate', 'plateState', 'plateType', 'currentVehicleKey', 'firstSeen', 'updated']) if (!(k in p)) e.push(`missing "${k}"`);
+  for (const k of Object.keys(p)) if (!['plate', 'plateState', 'plateType', 'currentVehicleKey', 'firstSeen', 'updated'].includes(k)) e.push(`unknown field "${k}"`);
+  if (!/^[A-Z0-9]{1,20}$/.test(p.plate || '')) e.push('plate must be 1-20 letters/digits');
+  if (!isState(p.plateState || '')) e.push('plateState must be a state or province code (CA), a Mexican state (SON), USG / GOV with an optional code (GOV-DHS) or XX');
+  if (!PLATE_TYPES.includes(p.plateType)) e.push(`plateType must be one of ${PLATE_TYPES.join(', ')}`);
+  if (!/^VEH_[0-9a-f]{8}$/.test(p.currentVehicleKey || '')) e.push('currentVehicleKey is malformed');
+  if (alias && `${p.plateState}-${p.plate}` !== alias) e.push('plateState + plate does not match the file name');
+  return e;
+}
+
+function validateAll() {
+  const errors = [], warnings = [];
+  for (const rec of recs.values()) for (const m of validateVehicle(rec.v, rec.key)) errors.push(`vehicles/${rec.key}: ${m}`);
+  for (const [alias, pl] of plates) {
+    if (pl.deleted) continue;
+    for (const m of validatePlate(pl.p, alias)) errors.push(`plates/${alias}: ${m}`);
+    const owner = recs.get(pl.p.currentVehicleKey);
+    if (!owner) errors.push(`plates/${alias}: points at missing vehicle ${pl.p.currentVehicleKey}`);
+    else if (!owner.v.plateAliases.includes(alias)) errors.push(`plates/${alias}: ${owner.key} does not list it in plateAliases`);
+  }
+  for (const rec of recs.values()) for (const a of rec.v.plateAliases || []) {
+    const pl = plates.get(a);
+    if (!pl || pl.deleted) warnings.push(`vehicles/${rec.key}: plate ${a} has no plate file`);
+  }
+  return { errors, warnings };
+}
+
+// ====================== index (mirrors scripts/build_index.py) ======================
+function searchFields(v) {
+  const out = {};
+  for (const k of ['color', 'make', 'model', 'bodyStyle']) if (typeof v[k] === 'string' && v[k] && v[k] !== 'unknown') out[k] = v[k];
+  if (Number.isInteger(v.year)) out.year = v.year;
+  const feats = (v.distinguishing || []).filter((f) => f && f !== 'unknown');
+  if (feats.length) out.features = feats;
+  return out;
+}
+function indexEntry(v) {
+  let latest = null;
+  for (const s of v.sightings || []) if (located(s) && (!latest || tsOf(s.timestamp) > tsOf(latest.timestamp))) latest = s;
+  return {
+    vehicleKey: v.vehicleKey, displayName: v.displayName ?? '', flag: v.flag ?? 'unknown', lastSeen: v.lastSeen ?? null,
+    location: latest ? { lat: latest.location.lat, lng: latest.location.lng } : null, plateAliases: v.plateAliases ?? [], ...searchFields(v)
+  };
+}
+function buildIndexText() {
+  const entries = [...recs.values()].map((r) => indexEntry(r.v)).sort((a, b) => (a.vehicleKey < b.vehicleKey ? -1 : a.vehicleKey > b.vehicleKey ? 1 : 0));
+  return ser(entries);
+}
+
+// ====================== loading ======================
+async function openFolder(handle) {
+  root = handle;
+  folderName = handle.name || 'repo';
+  try { vDir = await sub(root, 'data/vehicles'); } catch {
+    banner('That folder has no <code>data/vehicles</code>. Pick the top folder of the repo clone.', 'err');
+    root = null;
+    return;
+  }
+  try { pDir = await sub(root, 'data/plates'); } catch { pDir = null; }
+  idb.set('lastHandle', handle);
+  await reload(true);
+}
+
+async function reload(first = false) {
+  if (!root) return;
+  if (!first && (dirtyV.size || dirtyP.size) && !confirm('You have unsaved changes. Reload from disk and lose them?')) return;
+  clearBanners();
+  setStatus('Reading files…');
+  const prog = document.createElement('progress');
+  $('status').appendChild(prog);
+  try {
+    const vFiles = (await listFiles(vDir)).filter((f) => f.name.endsWith('.json'));
+    const pFiles = pDir ? (await listFiles(pDir)).filter((f) => f.name.endsWith('.json')) : [];
+    let done = 0;
+    const total = vFiles.length + pFiles.length;
+    const tick = () => { done++; if (done % 100 === 0) { prog.max = total; prog.value = done; } };
+    recs.clear(); plates.clear(); dirtyV.clear(); dirtyP.clear(); ui.selected.clear(); ui.open = null;
+    const bad = [];
+    const vRead = await inBatches(vFiles, 64, async (fh) => { const text = await readText(fh); tick(); return { name: fh.name, text }; });
+    const pRead = await inBatches(pFiles, 64, async (fh) => { const text = await readText(fh); tick(); return { name: fh.name, text }; });
+    for (const f of pRead) {
+      try { plates.set(f.name.replace(/\.json$/, ''), { p: JSON.parse(f.text), orig: f.text, deleted: false }); } catch (err) { bad.push(`data/plates/${f.name}: ${err.message}`); }
+    }
+    for (const f of vRead) {
+      try {
+        const v = JSON.parse(f.text);
+        const key = f.name.replace(/\.json$/, '');
+        recs.set(key, { key, v, orig: f.text, d: null });
+      } catch (err) { bad.push(`data/vehicles/${f.name}: ${err.message}`); }
+    }
+    try { indexText = await readText(await (await sub(root, 'data')).getFileHandle('index.json')); } catch { indexText = ''; }
+    baseline = (await idb.get(`baseline:${folderName}`)) || null;
+    for (const rec of recs.values()) derive(rec);
+    if (!baseline) {
+      await saveBaseline();
+      banner('First time on this folder: everything here counts as already reviewed. From now on, records added or updated by a <code>git pull</code> show as <b>New</b> or <b>Updated</b> until you press <i>Mark all reviewed</i>.', 'ok');
+    }
+    if (bad.length) banner(`<b>${bad.length} file(s) could not be read:</b><pre>${esc(bad.slice(0, 20).join('\n'))}</pre>`, 'err', true);
+    if (indexText && indexText !== buildIndexText()) banner('Note: <code>data/index.json</code> on disk differs from what these records would produce. Saving any change will rewrite it from the records.', '', true);
+  } catch (err) {
+    banner(`Could not read the folder: ${esc(err.message)}`, 'err');
+    setStatus('');
+    return;
+  }
+  $('intro').hidden = true;
+  $('app').hidden = false;
+  for (const id of ['btn-reload', 'btn-validate']) $(id).hidden = false;
+  setStatus(`${plural(recs.size, 'vehicle')}, ${plural(plates.size, 'plate')} in “${folderName}”`);
+  closeDetail();
+  renderAll(true);
+  renderPending();
+}
+
+async function saveBaseline() {
+  const v = {};
+  for (const rec of recs.values()) v[rec.key] = { n: rec.d.nSight, ls: rec.d.last };
+  baseline = { savedAt: nowIso(), v };
+  await idb.set(`baseline:${folderName}`, baseline);
+  refreshStatuses();
+}
+
+// ====================== filtering ======================
+const FACETS = [
+  { id: 'status', label: 'Review status', get: (d) => [d.status] },
+  { id: 'flag', label: 'Flag', get: (d) => [d.flag] },
+  { id: 'body', label: 'Body style', get: (d) => [d.body] },
+  { id: 'color', label: 'Color', get: (d) => [d.color], edit: 'color' },
+  { id: 'make', label: 'Make', get: (d) => [d.make], edit: 'make' },
+  { id: 'model', label: 'Model', get: (d) => [d.model], edit: 'model' },
+  { id: 'year', label: 'Year', get: (d) => [d.year], edit: 'year' },
+  { id: 'state', label: 'Plate state', get: (d) => d.states },
+  { id: 'ptype', label: 'Plate type', get: (d) => d.ptypes },
+  { id: 'observer', label: 'Observer', get: (d) => d.observers },
+  { id: 'source', label: 'Source', get: (d) => d.sources },
+  { id: 'by', label: 'Last updated by', get: (d) => [d.by] },
+  { id: 'checks', label: 'Lookup-site checks', get: (d) => d.checks },
+  { id: 'dup', label: 'Possible duplicate', get: (d) => [d.dup ? 'yes' : 'no'] },
+  { id: 'plated', label: 'Has a plate', get: (d) => [d.plates.length ? 'yes' : 'no'] },
+  { id: 'photos', label: 'Has photos', get: (d) => [d.nPhoto ? 'yes' : 'no'] },
+  { id: 'loc', label: 'Has a location', get: (d) => [d.hasLoc ? 'yes' : 'no'] },
+  { id: 'edited', label: 'Edited here (unsaved)', get: (d, rec) => [dirtyV.has(rec.key) ? 'yes' : 'no'] }
+];
+const facetValues = (f, rec) => { const v = f.get(rec.d, rec).map((x) => String(x ?? '').trim()).filter(Boolean); return v.length ? v : [NONE]; };
+
+function parseQuery(q) {
+  const tokens = [];
+  const re = /(-?)(?:([A-Za-z]+):)?(?:"([^"]*)"|(\S+))/g;
+  let m;
+  while ((m = re.exec(q))) {
+    const text = (m[3] ?? m[4] ?? '').toLowerCase();
+    if (!text) continue;
+    const field = m[2] ? m[2].toLowerCase() : null;
+    tokens.push({ neg: m[1] === '-', field, text });
+  }
+  return tokens.map((t) => (t.field && !(t.field in ui.fieldMap) ? { neg: t.neg, field: null, text: `${t.field}:${t.text}` } : t));
+}
+ui.fieldMap = { name: 1, color: 1, make: 1, model: 1, year: 1, body: 1, bodystyle: 1, flag: 1, plate: 1, state: 1, notes: 1, features: 1, feature: 1, observer: 1, source: 1, by: 1, key: 1, type: 1, status: 1 };
+
+function textPasses(rec, tokens) {
+  for (const t of tokens) {
+    const hay = t.field ? rec.d.f[t.field] : rec.d.hay;
+    const hit = hay.includes(t.text);
+    if (t.neg ? hit : !hit) return false;
+  }
+  return true;
+}
+function datesPass(rec) {
+  const d = rec.d;
+  const chk = (val, from, to) => (!from || (val && day(val) >= from)) && (!to || (val && day(val) <= to));
+  return chk(d.first, ui.firstFrom, ui.firstTo) && chk(d.last, ui.lastFrom, ui.lastTo);
+}
+function facetPasses(rec, f) {
+  const sel = ui.facets[f.id];
+  if (!sel || !sel.size) return true;
+  return facetValues(f, rec).some((v) => sel.has(v));
+}
+
+const SORTS = {
+  name: (r) => r.d.name.toLowerCase(), flag: (r) => FLAGS.indexOf(r.d.flag), plates: (r) => r.d.plates[0] || '~',
+  body: (r) => r.d.body, last: (r) => tsOf(r.d.last), first: (r) => tsOf(r.d.first), n: (r) => r.d.nSight, photos: (r) => r.d.nPhoto,
+  status: (r) => ({ new: 0, updated: 1, reviewed: 2 }[r.d.status])
+};
+
+function compute() {
+  const tokens = parseQuery(ui.q);
+  const base = [];
+  for (const rec of recs.values()) if (textPasses(rec, tokens) && datesPass(rec)) base.push(rec);
+  // facet counts: records passing every other facet
+  const counts = {};
+  for (const f of FACETS) {
+    const c = new Map();
+    for (const rec of base) {
+      if (!FACETS.every((g) => g.id === f.id || facetPasses(rec, g))) continue;
+      for (const v of new Set(facetValues(f, rec))) c.set(v, (c.get(v) || 0) + 1);
+    }
+    counts[f.id] = c;
+  }
+  filtered = base.filter((rec) => FACETS.every((f) => facetPasses(rec, f)));
+  const key = SORTS[ui.sortKey] || SORTS.last;
+  filtered.sort((a, b) => {
+    const x = key(a), y = key(b);
+    return (x < y ? -1 : x > y ? 1 : a.key < b.key ? -1 : 1) * ui.sortDir;
+  });
+  return { tokens, counts };
+}
+
+// ====================== rendering ======================
+let lastCounts = {};
+let lastTokens = [];
+
+let facetsBuilt = false;
+function renderAll(rebuildFacets = false) {
+  const r = compute(); lastCounts = r.counts; lastTokens = r.tokens;
+  if (rebuildFacets || !facetsBuilt) renderFacets(); else updateFacetCounts();
+  renderResults();
+}
+
+function highlight(text, terms) {
+  const t = String(text ?? '');
+  if (!terms.length) return esc(t);
+  const re = new RegExp(`(${terms.map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'ig');
+  return t.split(re).map((part, i) => (i % 2 ? `<mark>${esc(part)}</mark>` : esc(part))).join('');
+}
+function snippet(rec) {
+  const terms = lastTokens.filter((t) => !t.neg).map((t) => t.text);
+  if (!terms.length) return '';
+  const sources = [['features', `${rec.d.feats.join(', ')} ${rec.d.fnotes}`.trim()], ['notes', rec.d.notes]];
+  for (const [label, text] of sources) {
+    const low = text.toLowerCase();
+    const hit = terms.map((t) => low.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0];
+    if (hit === undefined) continue;
+    const from = Math.max(0, hit - 45);
+    const piece = text.slice(from, hit + 110).replace(/\s+/g, ' ');
+    return `<span class="snip">${label}: ${from ? '…' : ''}${highlight(piece, terms)}${hit + 110 < text.length ? '…' : ''}</span>`;
+  }
+  return '';
+}
+
+function renderResults() {
+  const n = filtered.length;
+  $('count').textContent = `${n.toLocaleString()} of ${recs.size.toLocaleString()} match`;
+  // status chips
+  const stat = ui.facets.status || new Set();
+  const counts = { new: 0, updated: 0 };
+  for (const rec of recs.values()) if (rec.d.status in counts) counts[rec.d.status]++;
+  $('status-chips').innerHTML = ['new', 'updated'].map((s) => `<button class="chip${stat.has(s) ? ' on' : ''}" data-chip="${s}">${s === 'new' ? 'New' : 'Updated'} ${counts[s]}</button>`).join(' ')
+    + ` <button class="chip${ui.facets.edited?.has('yes') ? ' on' : ''}" data-chip="edited">Edited ${dirtyV.size}</button>`;
+  // headers
+  const cols = [['status', ''], ['name', 'Vehicle'], ['flag', 'Flag'], ['plates', 'Plates'], ['body', 'Body'], ['last', 'Last seen'], ['first', 'First seen'], ['n', 'Sightings'], ['photos', 'Photos']];
+  $('thead').innerHTML = `<th class="nosort"><input type="checkbox" id="chk-all" title="Select all ${n} matching"${n && ui.selected.size === n ? ' checked' : ''}></th>`
+    + cols.slice(1).map(([k, label]) => `<th data-sort="${k}">${label}${ui.sortKey === k ? (ui.sortDir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const shown = filtered.slice(0, ui.limit);
+  $('tbody').innerHTML = shown.map((rec) => {
+    const d = rec.d;
+    const badge = d.status === 'new' ? '<span class="badge new">NEW</span>' : d.status === 'updated' ? '<span class="badge updated">UPDATED</span>' : '';
+    const edited = dirtyV.has(rec.key) ? '<span class="badge edited">EDITED</span>' : '';
+    return `<tr data-key="${esc(rec.key)}" class="${ui.selected.has(rec.key) ? 'sel' : ''}${dirtyV.has(rec.key) ? ' dirty' : ''}">
+      <td><input type="checkbox" class="chk" data-key="${esc(rec.key)}"${ui.selected.has(rec.key) ? ' checked' : ''}></td>
+      <td class="name"><strong>${esc(d.name)}${badge}${edited}</strong>${snippet(rec)}</td>
+      <td><span class="dot dot-${esc(d.flag)}"></span>${esc(d.flag)}</td>
+      <td>${esc(d.plates.join(', ')) || '<span class="muted">none</span>'}</td>
+      <td>${esc(d.body)}</td><td>${esc(day(d.last))}</td><td>${esc(day(d.first))}</td><td>${d.nSight}</td><td>${d.nPhoto}</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="muted" style="padding:20px">No records match these filters.</td></tr>`;
+  $('more').innerHTML = n > ui.limit ? `<button id="btn-more">Show ${Math.min(PAGE, n - ui.limit)} more (${n - ui.limit} not shown)</button>` : '';
+  renderBulk();
+}
+
+function renderBulk() {
+  const sel = ui.selected.size;
+  const n = filtered.length;
+  const scope = sel ? `${plural(sel, 'selected record')}` : `all ${n} matching`;
+  $('bulk').hidden = !n;
+  $('bulk').innerHTML = `<b>Change ${esc(scope)}:</b>
+    <select id="bulk-flag"><option value="">Set flag…</option>${FLAGS.map((f) => `<option>${f}</option>`).join('')}</select>
+    <select id="bulk-body"><option value="">Set body style…</option>${BODY_STYLES.map((f) => `<option>${f}</option>`).join('')}</select>
+    <select id="bulk-dup"><option value="">Possible duplicate…</option><option value="true">mark as duplicate</option><option value="false">clear duplicate mark</option></select>
+    <select id="bulk-state"><option value="">Set unknown plate state…</option>${STATES.filter((s) => s !== 'XX').map((s) => `<option value="${s}">${stateName(s)}</option>`).join('')}</select>
+    ${sel ? '<button id="btn-unselect">Clear selection</button>' : ''}`;
+}
+
+function renderFacets() {
+  const html = FACETS.map((f) => {
+    const sel = ui.facets[f.id] || new Set();
+    const open = ui.openFacets.has(f.id) || sel.size;
+    return `<details class="facet" data-facet="${f.id}"${open ? ' open' : ''}>
+      <summary>${esc(f.label)} <span class="n" data-n="${f.id}"></span><span class="sel" data-sel="${f.id}"${sel.size ? '' : ' hidden'}>${sel.size}</span></summary>
+      <input class="ffilter" data-ff="${f.id}" type="search" placeholder="Find a value…" value="${esc(ui.facetFilter[f.id] || '')}">
+      <div class="fvals" data-fv="${f.id}"></div></details>`;
+  }).join('');
+  $('facet-list').innerHTML = html;
+  facetsBuilt = true;
+  for (const f of FACETS) fillFacet(f);
+}
+function updateFacetCounts() { for (const f of FACETS) fillFacet(f); }
+
+function fillFacet(f) {
+  const box = document.querySelector(`[data-fv="${f.id}"]`);
+  if (!box) return;
+  const counts = lastCounts[f.id] || new Map();
+  const sel = ui.facets[f.id] || new Set();
+  const all = new Map(counts);
+  for (const v of sel) if (!all.has(v)) all.set(v, 0);
+  // include every value used anywhere so zero-count values stay selectable
+  const universe = new Map();
+  for (const rec of recs.values()) for (const v of new Set(facetValues(f, rec))) universe.set(v, true);
+  for (const v of universe.keys()) if (!all.has(v)) all.set(v, 0);
+  const needle = (ui.facetFilter[f.id] || '').toLowerCase();
+  let rows = [...all.entries()].filter(([v]) => !needle || v.toLowerCase().includes(needle));
+  rows.sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], undefined, { numeric: true }));
+  const total = all.size;
+  const summaryN = document.querySelector(`[data-n="${f.id}"]`);
+  if (summaryN) summaryN.textContent = `(${total})`;
+  const badge = document.querySelector(`[data-sel="${f.id}"]`);
+  if (badge) { badge.hidden = !sel.size; badge.textContent = String(sel.size); }
+  box.innerHTML = rows.map(([v, c]) => `<label class="fv${c ? '' : ' zero'}"><input type="checkbox" data-fid="${f.id}" data-val="${esc(v)}"${sel.has(v) ? ' checked' : ''}>
+      <span class="t" title="${esc(v)}">${esc(v)}</span><span class="c">${c}</span>${f.edit && v !== NONE ? `<button class="ren" data-rename="${f.id}" data-val="${esc(v)}" title="Rename this value on every record">✎</button>` : ''}</label>`).join('')
+    || '<div class="muted" style="padding:4px">No values.</div>';
+}
+
+function renderPending() {
+  const p = $('pending');
+  const nv = dirtyV.size, np = dirtyP.size;
+  p.hidden = !(nv || np);
+  document.body.classList.toggle('has-pending', !p.hidden);
+  if (p.hidden) return;
+  p.innerHTML = `<b>Unsaved changes:</b> ${plural(nv, 'record')}${np ? `, ${plural(np, 'plate file')}` : ''}
+    <button id="btn-show-edited">Show edited records</button><span class="spacer"></span>
+    <button id="btn-discard" class="danger">Discard all</button><button id="btn-save" class="primary">Save to disk</button>`;
+}
+
+// ====================== detail panel ======================
+function closeDetail() {
+  document.body.classList.remove('has-detail');
+  $('detail').hidden = true;
+  $('detail').innerHTML = '';
+  ui.open = null;
+  for (const u of detailUrls) URL.revokeObjectURL(u);
+  detailUrls.length = 0;
+}
+const detailUrls = [];
+
+function opt(list, cur, fmt = (x) => x) { return list.map((x) => `<option value="${esc(x)}"${x === cur ? ' selected' : ''}>${esc(fmt(x))}</option>`).join(''); }
+
+function openDetail(key) {
+  const rec = recs.get(key);
+  if (!rec) return;
+  for (const u of detailUrls) URL.revokeObjectURL(u);
+  detailUrls.length = 0;
+  ui.open = key;
+  const v = rec.v;
+  const sights = [...v.sightings].map((s, i) => ({ s, i })).sort((a, b) => tsOf(b.s.timestamp) - tsOf(a.s.timestamp));
+  const platesHtml = (v.plateAliases || []).map((a, i) => {
+    const pl = plates.get(a);
+    const [st, num] = splitAlias(a); const [stBase, stCode] = stateParts(st);
+    const mine = pl && pl.p.currentVehicleKey === key;
+    return `<div class="pr" data-alias="${esc(a)}">
+      <select class="p-state"${mine || !pl ? '' : ' disabled'}>${stateOpts(stBase)}</select>
+      <input type="text" class="p-code" value="${esc(stCode)}" maxlength="8" placeholder="Code" title="Optional code on a USG / GOV plate, for example G42 or DHS"${FEDERAL.includes(stBase) ? '' : ' hidden'}${mine || !pl ? '' : ' disabled'}>
+      <input type="text" class="p-num" value="${esc(num)}" maxlength="20"${mine || !pl ? '' : ' disabled'}>
+      <select class="p-type"${mine ? '' : ' disabled'}>${opt(PLATE_TYPES, pl?.p.plateType || 'standard')}</select>
+      <button class="p-del danger" title="Remove this plate">✕</button></div>${!pl ? '<div class="muted">No plate file for this plate.</div>' : mine ? '' : `<div class="muted">This plate file belongs to ${esc(pl.p.currentVehicleKey)}.</div>`}`;
+  }).join('') || '<div class="muted">No plates on this vehicle.</div>';
+  const sightHtml = sights.map(({ s, i }) => `<div class="sight" data-i="${i}">
+      <div class="meta">${esc(s.timestamp)} · ${esc(s.observer || 'unknown observer')}${s.source ? ` · ${esc(s.source)}` : ''}${located(s) ? ` · ${s.location.lat}, ${s.location.lng}` : ' · no location'}</div>
+      <div class="row2"><div><label class="f">Flag</label><select class="s-flag">${opt(FLAGS, s.flag)}</select></div></div>
+      <label class="f">Notes</label><textarea class="s-notes" rows="${Math.min(8, Math.max(2, String(s.notes || '').split('\n').length + 1))}">${esc(s.notes || '')}</textarea>
+      ${s.photos && s.photos.length ? `<div class="thumbs" data-photos="${esc(s.photos.join('|'))}"></div>` : ''}</div>`).join('');
+  const d = rec.d;
+  $('detail').innerHTML = `<button class="close" id="btn-close">Close ✕</button>
+    <h2>${esc(d.name)}</h2>
+    <div class="muted">${esc(key)} · first seen ${esc(day(d.first))} · last seen ${esc(day(d.last))}${v.lastUpdatedBy ? ` · last updated by ${esc(v.lastUpdatedBy)}` : ''}</div>
+    <div id="detail-errs"></div>
+    <div class="row2"><div><label class="f">Color</label><input type="text" id="e-color" value="${esc(v.color)}"></div>
+      <div><label class="f">Make</label><input type="text" id="e-make" value="${esc(v.make)}"></div>
+      <div><label class="f">Model</label><input type="text" id="e-model" value="${esc(v.model || '')}"></div>
+      <div><label class="f">Year</label><input type="text" id="e-year" value="${esc(v.year || '')}" inputmode="numeric" maxlength="4"></div>
+      <div><label class="f">Body style</label><select id="e-body">${opt(BODY_STYLES, v.bodyStyle)}</select></div>
+      <div><label class="f">Flag</label><select id="e-flag">${opt(FLAGS, v.flag)}</select></div></div>
+    <label class="f">Distinguishing features (comma-separated)</label><input type="text" id="e-feats" value="${esc((v.distinguishing || []).join(', '))}">
+    <label class="f">Feature notes</label><textarea id="e-fnotes" rows="2">${esc(v.distinguishingNotes || '')}</textarea>
+    <label class="f"><input type="checkbox" id="e-dup"${v.possibleDuplicate ? ' checked' : ''}> Possible duplicate</label>
+    <h3>Plates</h3><div class="plates">${platesHtml}
+      <div class="pr" id="add-plate"><select id="n-state">${stateOpts('XX')}</select><input type="text" id="n-code" maxlength="8" placeholder="Code" title="Optional code on a USG / GOV plate, for example G42 or DHS" hidden><input type="text" id="n-num" placeholder="Add a plate" maxlength="20"><select id="n-type">${opt(PLATE_TYPES, 'standard')}</select><button id="btn-add-plate">Add</button></div></div>
+    <h3>Sightings (${v.sightings.length})</h3>${sightHtml}
+    <div class="hint">Applying stages the change; nothing is written until you press “Save to disk”.</div>
+    <div class="actions"><button class="primary" id="btn-apply">Apply to this record</button><button id="btn-revert">Revert this record</button></div>`;
+  $('detail').hidden = false;
+  document.body.classList.add('has-detail');
+  loadPhotos();
+}
+
+async function loadPhotos() {
+  const holders = [...document.querySelectorAll('#detail .thumbs[data-photos]')];
+  for (const h of holders) {
+    for (const path of h.dataset.photos.split('|')) {
+      try {
+        const file = await (await (await sub(root, path.split('/').slice(0, -1).join('/'))).getFileHandle(path.split('/').pop())).getFile();
+        const url = URL.createObjectURL(file);
+        detailUrls.push(url);
+        if (!document.body.contains(h)) return;
+        const img = document.createElement('img');
+        img.src = url; img.alt = path; img.dataset.full = url; img.loading = 'lazy';
+        h.appendChild(img);
+      } catch { const m = document.createElement('div'); m.className = 'muted'; m.textContent = `missing ${path}`; h.appendChild(m); }
+    }
+  }
+}
+
+// ---- edits ----
+const aliasOf = (state, num) => `${state}-${String(num).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+
+function touchVehicle(rec) {
+  const text = ser(rec.v);
+  if (text === rec.orig) dirtyV.delete(rec.key); else dirtyV.add(rec.key);
+  derive(rec);
+}
+function touchPlate(alias) {
+  const pl = plates.get(alias);
+  if (!pl) return;
+  const changed = pl.deleted ? pl.orig !== null : (pl.orig === null || ser(pl.p) !== pl.orig);
+  if (pl.deleted && pl.orig === null) { plates.delete(alias); dirtyP.delete(alias); return; }
+  if (changed) dirtyP.add(alias); else dirtyP.delete(alias);
+}
+const editor = () => 'desktop-tool';
+
+/** Rename/retype/add/remove a plate on one vehicle. Returns an error message or ''. */
+function setPlate(rec, oldAlias, { state, num, type, remove }) {
+  const v = rec.v;
+  const idx = v.plateAliases.indexOf(oldAlias);
+  if (remove) {
+    const pl = plates.get(oldAlias);
+    if (idx >= 0) v.plateAliases.splice(idx, 1);
+    if (pl && pl.p.currentVehicleKey === rec.key) { pl.deleted = true; touchPlate(oldAlias); }
+    return '';
+  }
+  const alias = aliasOf(state, num);
+  if (!isState(state)) return `“${state}” is not a known state code.`;
+  if (!ALIAS_RE.test(alias)) return `“${num}” is not a valid plate (1-20 letters/digits).`;
+  const old = plates.get(oldAlias);
+  if (alias !== oldAlias) {
+    const clash = plates.get(alias);
+    if (clash && !clash.deleted) return `${alias} already exists (vehicle ${clash.p.currentVehicleKey}). That may be the same vehicle: look it up and merge by hand.`;
+    if (v.plateAliases.includes(alias)) return `${alias} is already on this vehicle.`;
+  }
+  const now = nowIso();
+  if (alias === oldAlias) {
+    if (old && old.p.plateType !== type) { old.p.plateType = type; old.p.updated = now; touchPlate(oldAlias); }
+    return '';
+  }
+  if (idx >= 0) v.plateAliases[idx] = alias; else v.plateAliases.push(alias);
+  if (old) { old.deleted = true; touchPlate(oldAlias); }
+  const existing = plates.get(alias); // a plate deleted earlier in this session can be re-created
+  const [aliasState, aliasPlate] = splitAlias(alias);
+  const p = { plate: aliasPlate, plateState: aliasState, plateType: type, currentVehicleKey: rec.key, firstSeen: old ? old.p.firstSeen : now, updated: now };
+  plates.set(alias, { p, orig: existing ? existing.orig : null, deleted: false });
+  touchPlate(alias);
+  return '';
+}
+
+function platesSig() { return JSON.stringify([...plates].map(([k, x]) => [k, x.deleted, x.p])); }
+
+function applyDetail() {
+  const rec = recs.get(ui.open);
+  if (!rec) return;
+  const work = JSON.parse(JSON.stringify(rec.v));
+  const plateSnapshot = new Map([...plates].map(([k, x]) => [k, { p: { ...x.p }, orig: x.orig, deleted: x.deleted }]));
+  const sigBefore = platesSig();
+  const errs = [];
+  const val = (id) => $(id).value;
+  const color = clean(val('e-color')), make = clean(val('e-make')), model = clean(val('e-model'));
+  if (!color) errs.push('Color must not be empty (use “unknown”).');
+  if (!make) errs.push('Make must not be empty (use “unknown”).');
+  const yearText = clean(val('e-year'));
+  let year = null;
+  if (yearText) { year = Number(yearText); if (!Number.isInteger(year) || year < 1900 || year > 2100) errs.push('Year must be four digits, 1900-2100.'); }
+  const feats = [...new Set(val('e-feats').split(/[,;\n]/).map(clean).filter(Boolean))];
+
+  if (color && work.color !== color.toLowerCase()) work.color = color.toLowerCase();
+  if (make && work.make !== tidyWord(make)) work.make = tidyWord(make);
+  const newModel = model ? tidyWord(model) : null;
+  if ((work.model ?? null) !== newModel) work.model = newModel;
+  if (yearText) { if (work.year !== year) work.year = year; } else if (work.year !== undefined && work.year !== null) work.year = null;
+  work.bodyStyle = val('e-body');
+  work.flag = val('e-flag');
+  if (JSON.stringify(work.distinguishing) !== JSON.stringify(feats)) work.distinguishing = feats;
+  const fnotes = val('e-fnotes').trim();
+  if ((work.distinguishingNotes || '') !== fnotes) work.distinguishingNotes = fnotes || null;
+  if (Boolean(work.possibleDuplicate) !== $('e-dup').checked) work.possibleDuplicate = $('e-dup').checked;
+
+  // the name follows color/make/model only when one of them changed (hand-made names stay as they are)
+  if (work.color !== rec.v.color || work.make !== rec.v.make || (work.model ?? null) !== (rec.v.model ?? null)) work.displayName = buildDisplayName(work.color, work.make, work.model);
+
+  document.querySelectorAll('#detail .sight').forEach((el) => {
+    const s = work.sightings[Number(el.dataset.i)];
+    const flag = el.querySelector('.s-flag').value;
+    const notes = el.querySelector('.s-notes').value;
+    if (s.flag !== flag) s.flag = flag;
+    if ((s.notes || '') !== notes) s.notes = notes.trim() ? notes : null;
+  });
+
+  // plates are applied to the live plate table and rolled back below if anything is wrong
+  const scratch = { v: work, key: rec.key };
+  const rows = [...document.querySelectorAll('#detail .plates .pr[data-alias]')];
+  for (const row of rows.filter((r) => r.dataset.removed === '1')) setPlate(scratch, row.dataset.alias, { remove: true });
+  for (const row of rows.filter((r) => r.dataset.removed !== '1')) {
+    const alias = row.dataset.alias;
+    const state = stateFrom(row.querySelector('.p-state'), row.querySelector('.p-code')), num = row.querySelector('.p-num').value, type = row.querySelector('.p-type').value;
+    const cur = plates.get(alias);
+    if (aliasOf(state, num) === alias && (!cur || cur.p.plateType === type)) continue;
+    const msg = setPlate(scratch, alias, { state, num, type });
+    if (msg) errs.push(msg);
+  }
+  const addNum = clean(val('n-num'));
+  if (addNum) { const msg = setPlate(scratch, null, { state: stateFrom($('n-state'), $('n-code')), num: addNum, type: val('n-type') }); if (msg) errs.push(msg); }
+
+  const changed = ser(work) !== ser(rec.v) || platesSig() !== sigBefore;
+  if (changed && !errs.length) work.lastUpdatedBy = editor();
+  if (!errs.length) for (const m of validateVehicle(work, rec.key)) errs.push(m);
+  if (!errs.length) for (const a of work.plateAliases) { const pl = plates.get(a); if (pl && !pl.deleted) for (const m of validatePlate(pl.p, a)) errs.push(`${a}: ${m}`); }
+
+  if (errs.length) {
+    plates.clear();
+    for (const [k, x] of plateSnapshot) plates.set(k, x);
+    rebuildDirtyPlates();
+    $('detail-errs').innerHTML = `<div class="errs">${errs.map((e) => `<div>${esc(e)}</div>`).join('')}</div>`;
+    return;
+  }
+  rec.v = work;
+  touchVehicle(rec);
+  rebuildDirtyPlates();
+  renderAll();
+  renderPending();
+  openDetail(rec.key);
+}
+function rebuildDirtyPlates() { dirtyP.clear(); for (const alias of [...plates.keys()]) touchPlate(alias); }
+
+// ====================== bulk operations ======================
+function scopeRecords() {
+  return ui.selected.size ? [...ui.selected].map((k) => recs.get(k)).filter(Boolean) : filtered.slice();
+}
+
+function bulkSet(field, value) {
+  const list = scopeRecords();
+  let n = 0;
+  for (const rec of list) {
+    const cur = field === 'possibleDuplicate' ? Boolean(rec.v.possibleDuplicate) : rec.v[field];
+    if (cur === value) continue;
+    rec.v[field] = value;
+    rec.v.lastUpdatedBy = editor();
+    touchVehicle(rec);
+    n++;
+  }
+  afterBulk(`${plural(n, 'record')} changed (${plural(list.length - n, 'record')} already had that value).`);
+}
+
+function bulkPlateState(state) {
+  const list = scopeRecords();
+  let moved = 0; const skipped = [];
+  for (const rec of list) {
+    let touched = false;
+    for (const alias of [...rec.v.plateAliases]) {
+      if (!alias.startsWith('XX-')) continue;
+      const pl = plates.get(alias);
+      if (pl && pl.p.currentVehicleKey !== rec.key) continue;
+      const msg = setPlate(rec, alias, { state, num: splitAlias(alias)[1], type: pl?.p.plateType || 'standard' });
+      if (msg) skipped.push(`${rec.d.name} ${alias}: ${msg}`); else { moved++; touched = true; }
+    }
+    if (touched) { rec.v.lastUpdatedBy = editor(); touchVehicle(rec); }
+  }
+  rebuildDirtyPlates();
+  afterBulk(`${plural(moved, 'plate')} moved to ${state}.${skipped.length ? ` ${skipped.length} skipped because that plate already exists.` : ''}`, skipped);
+}
+
+function renameValue(field, from) {
+  const label = FACETS.find((f) => f.id === field).label.toLowerCase();
+  const to = prompt(`Rename ${label} “${from}” on every record that has it.\nNew value:`, from);
+  if (to === null) return;
+  let next = clean(to);
+  if (field === 'year') {
+    const y = Number(next);
+    if (next && (!Number.isInteger(y) || y < 1900 || y > 2100)) { alert('Year must be four digits, 1900-2100.'); return; }
+  } else if (!next && field !== 'model') { alert('That value cannot be empty.'); return; }
+  const targets = [...recs.values()].filter((r) => String(field === 'year' ? (r.v.year ?? '') : (r.v[field] ?? '')) === from);
+  if (!targets.length || next === from) return;
+  if (!confirm(`Change ${plural(targets.length, 'record')} from “${from}” to “${next || 'empty'}”?`)) return;
+  for (const rec of targets) {
+    if (field === 'year') rec.v.year = next ? Number(next) : null;
+    else if (field === 'color') rec.v.color = next.toLowerCase();
+    else if (field === 'make') rec.v.make = tidyWord(next);
+    else rec.v.model = next ? tidyWord(next) : null;
+    if (field !== 'year') rec.v.displayName = buildDisplayName(rec.v.color, rec.v.make, rec.v.model);
+    rec.v.lastUpdatedBy = editor();
+    touchVehicle(rec);
+  }
+  ui.facets[field] = new Set();
+  afterBulk(`${plural(targets.length, 'record')} renamed.`);
+}
+
+function afterBulk(message, details = []) {
+  const bad = [];
+  for (const rec of recs.values()) if (dirtyV.has(rec.key)) { const m = validateVehicle(rec.v, rec.key); if (m.length) bad.push(`${rec.key}: ${m[0]}`); }
+  banner(`${esc(message)}${details.length ? `<pre>${esc(details.slice(0, 8).join('\n'))}</pre>` : ''}${bad.length ? `<pre>Problems found, fix before saving:\n${esc(bad.slice(0, 8).join('\n'))}</pre>` : ''}`, bad.length ? 'err' : 'ok');
+  ui.selected.clear();
+  renderAll();
+  renderPending();
+  if (ui.open) openDetail(ui.open);
+}
+
+// ====================== save / discard ======================
+async function saveAll() {
+  const check = [];
+  for (const key of dirtyV) { const rec = recs.get(key); for (const m of validateVehicle(rec.v, key)) check.push(`${key}: ${m}`); }
+  for (const alias of dirtyP) { const pl = plates.get(alias); if (pl && !pl.deleted) for (const m of validatePlate(pl.p, alias)) check.push(`${alias}: ${m}`); }
+  if (check.length) { banner(`<b>Not saved.</b> Fix these first:<pre>${esc(check.slice(0, 12).join('\n'))}</pre>`, 'err'); return; }
+  const btn = $('btn-save'); if (btn) btn.disabled = true;
+  setStatus('Saving…');
+  try {
+    // order: new plate files, vehicle files, then deletions, then the index (a stop part-way never leaves a plate pointing nowhere)
+    if (dirtyP.size && !pDir) pDir = await sub(root, 'data/plates', true);
+    const nP = dirtyP.size, nV = dirtyV.size;
+    for (const alias of [...dirtyP]) { const pl = plates.get(alias); if (pl && !pl.deleted) { const text = ser(pl.p); await writeText(pDir, `${alias}.json`, text); pl.orig = text; } }
+    for (const key of [...dirtyV]) { const rec = recs.get(key); const text = ser(rec.v); await writeText(vDir, `${key}.json`, text); rec.orig = text; }
+    for (const alias of [...dirtyP]) { const pl = plates.get(alias); if (pl && pl.deleted) { if (pl.orig !== null) await pDir.removeEntry(`${alias}.json`).catch(() => {}); plates.delete(alias); } }
+    const text = buildIndexText();
+    let indexChanged = false;
+    if (text !== indexText) { await writeText(await sub(root, 'data'), 'index.json', text); indexText = text; indexChanged = true; }
+    for (const key of dirtyV) { const rec = recs.get(key); if (baseline) baseline.v[key] = { n: rec.d.nSight, ls: rec.d.last }; }
+    if (baseline) await idb.set(`baseline:${folderName}`, baseline);
+    dirtyV.clear(); dirtyP.clear();
+    refreshStatuses();
+    const cmd = `git add data photos\ngit commit -m "Data cleanup (${nV} record${nV === 1 ? '' : 's'})"\ngit push`;
+    banner(`<b>Saved</b> ${plural(nV, 'record')}${nP ? `, ${plural(nP, 'plate file')}` : ''}${indexChanged ? ' and data/index.json' : ''} in “${esc(folderName)}”. Nothing is pushed yet. In a terminal in that folder:<pre id="gitcmd">${esc(cmd)}</pre>
+      <button id="btn-copy-git">Copy commands</button> Pushing data does not start any GitHub workflow. Run <code>npm run validate</code> first if you want the authoritative check.`, 'ok');
+  } catch (err) {
+    banner(`<b>Save stopped:</b> ${esc(err.message)}. Some files may already be written; review with <code>git status</code>.`, 'err');
+  }
+  setStatus(`${plural(recs.size, 'vehicle')}, ${plural(plates.size, 'plate')} in “${folderName}”`);
+  renderAll();
+  renderPending();
+  if (ui.open && recs.has(ui.open)) openDetail(ui.open);
+}
+
+function discardAll() {
+  if (!confirm(`Discard ${plural(dirtyV.size, 'edited record')}?`)) return;
+  for (const key of dirtyV) { const rec = recs.get(key); rec.v = JSON.parse(rec.orig); derive(rec); }
+  for (const [alias, pl] of [...plates]) {
+    if (pl.orig === null) plates.delete(alias);
+    else { pl.p = JSON.parse(pl.orig); pl.deleted = false; }
+  }
+  dirtyV.clear(); dirtyP.clear();
+  renderAll(); renderPending();
+  if (ui.open) openDetail(ui.open);
+}
+
+// ====================== CSV ======================
+function downloadCsv() {
+  const cols = ['vehicleKey', 'displayName', 'flag', 'plates', 'color', 'make', 'model', 'year', 'bodyStyle', 'features', 'firstSeen', 'lastSeen', 'sightings', 'photos', 'observers', 'notes'];
+  const q = (x) => { const s = String(x ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const rows = filtered.map((r) => [r.key, r.d.name, r.d.flag, r.d.plates.join(' '), r.d.color, r.d.make, r.d.model, r.d.year, r.d.body,
+    [...r.d.feats, r.d.fnotes].filter(Boolean).join('; '), r.d.first, r.d.last, r.d.nSight, r.d.nPhoto, r.d.observers.join('; '), r.d.notes.replace(/\n/g, ' | ')]);
+  const csv = [cols, ...rows].map((r) => r.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `tracker-records-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+// ====================== events ======================
+function showModal(html) { const m = $('modal'); m.innerHTML = `<div class="box">${html}</div>`; m.hidden = false; }
+function hideModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
+
+async function pickFolder() {
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'tracker-repo' });
+    await openFolder(handle);
+  } catch (err) { if (err.name !== 'AbortError') banner(`Could not open the folder: ${esc(err.message)}`, 'err'); }
+}
+
+async function reopenLast() {
+  const handle = await idb.get('lastHandle');
+  if (!handle) return;
+  try {
+    if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') { banner('Permission to the last folder was not granted.', 'err'); return; }
+    await openFolder(handle);
+  } catch (err) { banner(`Could not reopen the folder: ${esc(err.message)}`, 'err'); }
+}
+
+function runValidation() {
+  const { errors, warnings } = validateAll();
+  showModal(`<h3>Validation</h3>
+    <p><b>${errors.length}</b> error(s), <b>${warnings.length}</b> warning(s) across ${recs.size} vehicles and ${plates.size} plates.</p>
+    ${errors.length ? `<b>Errors</b><ul>${errors.slice(0, 50).map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+    ${warnings.length ? `<b>Warnings</b><ul>${warnings.slice(0, 30).map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+    <p class="hint">A quick check of the same rules as <code>npm run validate</code>; that command stays the authority (it also checks photo files).</p>
+    <div class="btns"><button id="modal-close" class="primary">Close</button></div>`);
+}
+
+document.addEventListener('click', async (e) => {
+  const t = e.target;
+  const id = t.id;
+  if (id === 'btn-open') return pickFolder();
+  if (id === 'btn-reopen') return reopenLast();
+  if (id === 'btn-reload') return reload(false);
+  if (id === 'btn-validate') return runValidation();
+  if (id === 'modal-close' || t === $('modal')) return hideModal();
+  if (id === 'btn-clear') { ui.q = ''; $('q').value = ''; ui.facets = {}; ui.facetFilter = {}; ui.firstFrom = ui.firstTo = ui.lastFrom = ui.lastTo = ''; for (const i of ['first-from', 'first-to', 'last-from', 'last-to']) $(i).value = ''; ui.limit = PAGE; return renderAll(true); }
+  if (id === 'btn-csv') return downloadCsv();
+  if (id === 'btn-reviewed') { await saveBaseline(); banner(`Marked ${plural(recs.size, 'record')} as reviewed.`, 'ok'); return renderAll(); }
+  if (id === 'btn-more') { ui.limit += PAGE; return renderResults(); }
+  if (id === 'btn-unselect') { ui.selected.clear(); return renderResults(); }
+  if (id === 'btn-close') return closeDetail();
+  if (id === 'btn-apply') return applyDetail();
+  if (id === 'btn-revert') { const rec = recs.get(ui.open); rec.v = JSON.parse(rec.orig); for (const a of [...plates.keys()]) { const pl = plates.get(a); if (pl.orig === null) plates.delete(a); else { pl.p = JSON.parse(pl.orig); pl.deleted = false; } } rebuildDirtyPlates(); touchVehicle(rec); renderAll(); renderPending(); return openDetail(rec.key); }
+  if (id === 'btn-save') return saveAll();
+  if (id === 'btn-discard') return discardAll();
+  if (id === 'btn-show-edited') { ui.facets.edited = new Set(['yes']); return renderAll(); }
+  if (id === 'btn-copy-git') { try { await navigator.clipboard.writeText($('gitcmd').textContent); t.textContent = 'Copied'; } catch { t.textContent = 'Select and copy by hand'; } return; }
+  if (id === 'btn-add-plate') { if (!clean($('n-num').value)) return; return applyDetail(); }
+  if (t.classList.contains('p-del')) { const row = t.closest('.pr'); row.dataset.removed = '1'; row.style.opacity = '.4'; t.disabled = true; return; }
+  if (t.tagName === 'IMG' && t.dataset.full) { $('zoom').innerHTML = `<img src="${esc(t.dataset.full)}" alt="">`; $('zoom').hidden = false; return; }
+  if (t.closest('#zoom')) { $('zoom').hidden = true; return; }
+  const ren = t.closest('[data-rename]');
+  if (ren) { e.preventDefault(); return renameValue(ren.dataset.rename, ren.dataset.val); }
+  const chip = t.closest('[data-chip]');
+  if (chip) {
+    const f = chip.dataset.chip === 'edited' ? 'edited' : 'status';
+    const val = chip.dataset.chip === 'edited' ? 'yes' : chip.dataset.chip;
+    const set = ui.facets[f] || (ui.facets[f] = new Set());
+    if (set.has(val)) set.delete(val); else set.add(val);
+    return renderAll();
+  }
+  const th = t.closest('th[data-sort]');
+  if (th) { const k = th.dataset.sort; if (ui.sortKey === k) ui.sortDir *= -1; else { ui.sortKey = k; ui.sortDir = (k === 'name' || k === 'plates' || k === 'body') ? 1 : -1; } return renderAll(); }
+  const row = t.closest('#tbody tr[data-key]');
+  if (row && !t.classList.contains('chk')) return openDetail(row.dataset.key);
+});
+
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.classList.contains('p-state') || t.id === 'n-state') { // USG / GOV plates take a code
+    const code = t.id === 'n-state' ? $('n-code') : t.parentElement.querySelector('.p-code');
+    if (code) { code.hidden = !FEDERAL.includes(t.value); if (code.hidden) code.value = ''; }
+  }
+  if (t.id === 'chk-all') { ui.selected = t.checked ? new Set(filtered.map((r) => r.key)) : new Set(); return renderResults(); }
+  if (t.classList.contains('chk')) { if (t.checked) ui.selected.add(t.dataset.key); else ui.selected.delete(t.dataset.key); t.closest('tr').classList.toggle('sel', t.checked); return renderBulk(); }
+  if (t.dataset.fid) {
+    const set = ui.facets[t.dataset.fid] || (ui.facets[t.dataset.fid] = new Set());
+    if (t.checked) set.add(t.dataset.val); else set.delete(t.dataset.val);
+    ui.limit = PAGE;
+    return renderAll();
+  }
+  if (t.id === 'bulk-flag' && t.value) { const v = t.value; t.value = ''; if (confirm(`Set flag “${v}” on ${scopeRecords().length} record(s)?`)) bulkSet('flag', v); return; }
+  if (t.id === 'bulk-body' && t.value) { const v = t.value; t.value = ''; if (confirm(`Set body style “${v}” on ${scopeRecords().length} record(s)?`)) bulkSet('bodyStyle', v); return; }
+  if (t.id === 'bulk-dup' && t.value) { const v = t.value === 'true'; t.value = ''; if (confirm(`${v ? 'Mark' : 'Clear the duplicate mark on'} ${scopeRecords().length} record(s)?`)) bulkSet('possibleDuplicate', v); return; }
+  if (t.id === 'bulk-state' && t.value) { const v = t.value; t.value = ''; if (confirm(`Move every plate with unknown state (XX) on ${scopeRecords().length} record(s) to ${v}?`)) bulkPlateState(v); return; }
+  if (['first-from', 'first-to', 'last-from', 'last-to'].includes(t.id)) {
+    ui[{ 'first-from': 'firstFrom', 'first-to': 'firstTo', 'last-from': 'lastFrom', 'last-to': 'lastTo' }[t.id]] = t.value;
+    ui.limit = PAGE; return renderAll();
+  }
+});
+
+let qTimer = null;
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.id === 'q') { clearTimeout(qTimer); qTimer = setTimeout(() => { ui.q = t.value; ui.limit = PAGE; renderAll(); }, 120); }
+  if (t.dataset && t.dataset.ff) { ui.facetFilter[t.dataset.ff] = t.value; fillFacet(FACETS.find((f) => f.id === t.dataset.ff)); }
+});
+document.addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (d.matches && d.matches('details.facet')) { if (d.open) ui.openFacets.add(d.dataset.facet); else ui.openFacets.delete(d.dataset.facet); }
+}, true);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { if (!$('modal').hidden) hideModal(); else if (!$('zoom').hidden) $('zoom').hidden = true; else if (ui.open) closeDetail(); }
+});
+window.addEventListener('beforeunload', (e) => { if (dirtyV.size || dirtyP.size) { e.preventDefault(); e.returnValue = ''; } });
+
+// ====================== start ======================
+(async function init() {
+  if (!window.showDirectoryPicker) {
+    $('support').innerHTML = '<b>This browser cannot edit local folders.</b> Open this file in Chrome or Edge on a desktop.';
+    $('btn-open').disabled = true;
+    return;
+  }
+  if (await idb.get('lastHandle')) $('btn-reopen').hidden = false;
+})();
+</script>
+</body>
+</html>

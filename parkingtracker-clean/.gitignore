@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc
+.obsidian/workspace.json
+.obsidian/workspaces.json
+# XML import: source exports and the report both contain street addresses
+import/
+reports/
+
+# importer output: already in data/, and large
+*.zip

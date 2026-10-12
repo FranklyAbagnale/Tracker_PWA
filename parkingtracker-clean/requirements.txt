@@ -1,0 +1,3 @@
+jsonschema>=4.18
+pyyaml>=6
+pillow>=10   # needed for photos: scripts/migrate_xml_to_json.py and scripts/generate_sample_data.py

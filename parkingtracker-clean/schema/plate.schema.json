@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plate.schema.json",
+  "title": "PlateRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["plate", "plateState", "plateType", "currentVehicleKey", "firstSeen", "updated"],
+  "properties": {
+    "plate": { "type": "string", "pattern": "^[A-Z0-9]{1,20}$" },
+    "plateState": {
+      "description": "Issuing jurisdiction: a US state or territory or Canadian province (2 letters, CA), a Mexican state (3 letters, ISO 3166-2:MX, SON), USG or GOV for federal and government plates with an optional code after a dash (USG-G42, GOV-DHS), or XX when not known. A plate is identified by state + plate; the file is data/plates/<plateState>-<plate>.json.",
+      "type": "string",
+      "anyOf": [
+        { "enum": ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "AS", "GU", "MP", "PR", "VI", "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT", "AGU", "BCN", "BCS", "CAM", "CHP", "CHH", "CMX", "COA", "COL", "DUR", "GUA", "GRO", "HID", "JAL", "MEX", "MIC", "MOR", "NAY", "NLE", "OAX", "PUE", "QUE", "ROO", "SLP", "SIN", "SON", "TAB", "TAM", "TLA", "VER", "YUC", "ZAC", "USG", "GOV", "XX"] },
+        { "pattern": "^(?:USG|GOV)-[A-Z0-9]{1,8}$" }
+      ]
+    },
+    "plateType": { "enum": ["standard", "dealer", "temporary", "vanity"] },
+    "currentVehicleKey": { "type": "string", "pattern": "^VEH_[0-9a-f]{8}$" },
+    "firstSeen": { "type": "string", "format": "date-time" },
+    "updated": { "type": "string", "format": "date-time" }
+  }
+}

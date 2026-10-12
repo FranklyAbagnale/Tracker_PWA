@@ -1,0 +1,34 @@
+{
+  "vehicleKey": "VEH_7a3f9c2b",
+  "displayName": "Grey Nissan Pathfinder",
+  "color": "grey",
+  "make": "Nissan",
+  "model": "Pathfinder",
+  "bodyStyle": "suv",
+  "distinguishing": ["roof rack", "dented rear bumper"],
+  "plateAliases": ["CA-ABC1234"],
+  "flag": "suspected",
+  "sightings": [
+    {
+      "id": "S_1b2c3d4e",
+      "timestamp": "2026-10-09T09:15:00.000Z",
+      "location": { "lat": 34.148, "lng": -118.144 },
+      "photos": [],
+      "flag": "unknown",
+      "notes": "Parked across two spaces.",
+      "source": "field-app"
+    },
+    {
+      "id": "S_5f6a7b8c",
+      "timestamp": "2026-10-10T14:32:00.000Z",
+      "location": { "lat": 34.148, "lng": -118.145 },
+      "photos": [],
+      "flag": "suspected",
+      "notes": "Back again, same spot.",
+      "source": "field-app"
+    }
+  ],
+  "firstSeen": "2026-10-09T09:15:00.000Z",
+  "lastSeen": "2026-10-10T14:32:00.000Z",
+  "possibleDuplicate": false
+}

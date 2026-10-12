@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParkingTracker Import</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #1f2937; --muted: #5b6472; --line: #d9dde3;
+    --accent: #0a66e0; --accent-ink: #ffffff; --ok: #137a3b; --warn: #8a5a00; --warn-bg: #fff6e0; --bad: #b42318;
+    --code-bg: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101418; --card: #181d23; --ink: #e8ebef; --muted: #9aa4b2; --line: #2b323b;
+      --accent: #4c9aff; --accent-ink: #06111f; --ok: #46c27a; --warn: #f0b64a; --warn-bg: #2a2212; --bad: #ff7b72;
+      --code-bg: #232a33;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  p { margin: 0 0 10px; }
+  .lede { color: var(--muted); margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px 16px; }
+  .field { flex: 1 1 200px; min-width: 0; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; }
+  .hint { color: var(--muted); font-size: 13px; font-weight: 400; display: block; margin-top: 2px; }
+  input[type=text], select, textarea { width: 100%; padding: 9px 10px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+  input[type=file] { width: 100%; font: inherit; }
+  button { font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center; color: var(--muted); }
+  .drop.over { border-color: var(--accent); color: var(--ink); }
+  ul.files { margin: 10px 0 0; padding-left: 20px; }
+  code, pre { background: var(--code-bg); border-radius: 6px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  code { padding: 1px 5px; }
+  pre { padding: 10px 12px; overflow-x: auto; margin: 8px 0; user-select: all; }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 14px; }
+  .stat { flex: 1 1 110px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .note { border-left: 4px solid var(--warn); background: var(--warn-bg); padding: 10px 12px; border-radius: 6px; margin: 10px 0; }
+  .good { color: var(--ok); } .bad { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .scroll { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-weight: 600; }
+  progress { width: 100%; height: 10px; }
+  [hidden] { display: none !important; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  tr.warn-row td { background: var(--warn-bg); }
+  label.check { font-weight: 400; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Import</h1>
+  <p class="lede">Adds records to ParkingTracker from a legacy plate-tracker XML export or from a spreadsheet saved as CSV, and gives you a ZIP to unpack in the repository. Everything runs in this page; your files are not uploaded anywhere (except address lookups, if you ask for them).</p>
+
+  <section class="card" aria-labelledby="s1">
+    <h2 id="s1">1. What are you importing?</h2>
+    <p class="hint" style="margin-top:0">Choose the file in the box that matches it (or drop it below). The page switches to the right steps for XML or CSV by itself. One kind of file at a time.</p>
+    <div class="drop" id="drop">Drop an XML or CSV file here, or choose below</div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label for="xml-input">Legacy XML export<span class="hint">One or more .xml files</span></label><input type="file" id="xml-input" accept=".xml,text/xml,application/xml" multiple>
+        <label for="xml-folder" style="margin-top:10px">Or a folder of XML files<span class="hint">Every .xml inside it is read</span></label><input type="file" id="xml-folder" webkitdirectory multiple></div>
+      <div class="field"><label for="csv-input">Spreadsheet saved as CSV<span class="hint">.csv (also .tsv or .txt). Several files work if they have the same columns.</span></label><input type="file" id="csv-input" accept=".csv,.tsv,.txt,text/csv,text/plain" multiple></div>
+    </div>
+    <ul class="files" id="file-list" aria-live="polite"></ul>
+    <div id="file-status" class="hint" role="status" aria-live="polite"></div>
+    <div class="only-csv" hidden>
+      <p class="hint">In Excel or Numbers use <b>Save As / Export → CSV</b>. Not sure about the layout? <a href="#" id="download-template">Download a template CSV</a> (two made-up example rows; replace them with yours).</p>
+      <details>
+        <summary>Which columns can the CSV have?</summary>
+        <p class="hint">Column names are matched automatically and you can change any of them in step 3. Only a plate or a vehicle description plus a date is really needed; everything else is optional.</p>
+        <div class="scroll"><table>
+          <thead><tr><th>Column (examples of headings)</th><th>Becomes</th></tr></thead>
+          <tbody>
+            <tr><td><code>License Plate</code>, <code>Plate</code></td><td>The plate number. Spaces and dashes are ignored. Blank, <code>NONE</code> or <code>NO PLATE</code> means the sighting has no plate.</td></tr>
+            <tr><td><code>State</code></td><td>Plate state: <code>CA</code>, <code>California</code>, <code>Calif.</code> all work. Anything not understood becomes <code>XX</code> (unknown) and is kept in the notes.</td></tr>
+            <tr><td><code>Color</code>, <code>Make</code>, <code>Model</code></td><td>The vehicle. A single <code>Vehicle</code> column such as <code>Silver Ford Expedition</code> also works.</td></tr>
+            <tr><td><code>Type</code>, <code>Body Style</code></td><td>sedan, SUV, truck, van (minivan too), coupe or hatchback. If blank, it is guessed from the model (an Expedition is an SUV); otherwise <code>unknown</code>.</td></tr>
+            <tr><td><code>Earliest Seen</code>, <code>Last Seen</code></td><td>One sighting at each date (one sighting if both dates are the same). Or use a single <code>Date</code> column for one sighting per row.</td></tr>
+            <tr><td><code>Address</code></td><td>Looked up on the map (step 4). A city name alone is not an address: it goes to the notes.</td></tr>
+            <tr><td><code>Latitude</code>, <code>Longitude</code></td><td>Exact map location, if you have it.</td></tr>
+            <tr><td><code>Flag</code></td><td>unknown, suspected, confirmed, cleared or pigs. Blank uses the flag chosen in step 4.</td></tr>
+            <tr><td><code>Year</code></td><td>Model year (1900 to 2100).</td></tr>
+            <tr><td><code>Notes</code>, <code>Comments</code></td><td>The sighting's notes.</td></tr>
+            <tr><td>Anything else (<code>City</code>…)</td><td>Added to the notes as <code>City: value</code>, so nothing is lost.</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="s1b">
+    <h2 id="s1b">2. Your existing data (important)</h2>
+    <p class="hint" style="margin-top:0">Choose the <code>data</code> folder inside your copy of the repository. The tool compares every record or row with what is already there, skips the ones already imported, joins new sightings to a vehicle that already has the plate, and adds only what is new. <b>If you skip this step the tool cannot tell old records from new ones.</b> Choose it even for a file you think is new: if it is already imported, you will be told.</p>
+    <div class="field"><label for="repo-input">The repository's <code>data</code> folder<span class="hint">Your browser asks permission to upload: nothing leaves your computer. Choose "Upload" or "Allow".</span></label>
+      <input type="file" id="repo-input" webkitdirectory multiple></div>
+    <div id="repo-status" class="hint" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card only-csv" aria-labelledby="s2c" hidden>
+    <h2 id="s2c">3. Columns</h2>
+    <p class="hint" style="margin-top:0">Check what each column becomes. The tool guesses from the headings; change any that are wrong. The preview shows how the first rows will be read.</p>
+    <label class="check" style="display:block; margin-bottom:10px"><input type="checkbox" id="has-header" checked> The first row holds column headings</label>
+    <div class="scroll" id="map-wrap" hidden><table><thead><tr><th>Column</th><th>Examples</th><th>Becomes</th></tr></thead><tbody id="map-rows"></tbody></table></div>
+    <div id="map-warnings"></div>
+    <h3 style="font-size:15px; margin:14px 0 6px">Preview</h3>
+    <div class="scroll"><table><thead><tr><th>Row</th><th>Plate</th><th>Vehicle</th><th>Body</th><th>Sightings on</th><th>Flag</th><th>Notes</th></tr></thead><tbody id="preview-rows"><tr><td colspan="7" class="hint">Choose a CSV file to see a preview.</td></tr></tbody></table></div>
+  </section>
+
+  <section class="card" aria-labelledby="s2">
+    <h2 id="s2"><span class="only-xml" hidden>3. </span><span class="only-csv" hidden>4. </span>Options</h2>
+    <div class="row">
+      <div class="field"><label for="flag">Flag for imported sightings<span class="hint">Used when the file has no flag of its own (a CSV can have a Flag column)</span></label>
+        <select id="flag"><option>confirmed</option><option>suspected</option><option>unknown</option><option>cleared</option><option>pigs</option></select></div>
+      <div class="field"><label for="default-state">State for plates with none<span class="hint">Every plate has a state. It is read from a state element or column, or "State: CA" in the text. Anything left is XX (unknown) unless you pick one here.</span></label>
+        <select id="default-state"></select></div>
+      <div class="field only-csv" hidden><label for="date-order">Date order<span class="hint">For dates like 01/08/26. Automatic reads month/day/year unless a date such as 25/01/26 proves day/month/year.</span></label>
+        <select id="date-order"><option value="auto">Automatic</option><option value="mdy">Month / day / year</option><option value="dmy">Day / month / year</option></select></div>
+      <div class="field only-csv" hidden><label for="csv-tz">Time zone<span class="hint">For dates with a time of day, and the noon placeholder used when a date has no time</span></label>
+        <select id="csv-tz"></select></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label for="geocode">Convert addresses to locations<span class="hint">Census: free, US addresses. OpenStreetMap: worldwide, slow. For a CSV only used if a column becomes "Address".</span></label>
+        <select id="geocode"><option value="census">US Census geocoder</option><option value="nominatim">OpenStreetMap (Nominatim)</option><option value="none">Do not look up addresses</option></select></div>
+      <div class="field"><label for="area">Default area<span class="hint">Added to addresses that do not mention it, e.g. <code>Pasadena CA</code></span></label>
+        <input type="text" id="area" placeholder="Pasadena CA" autocomplete="off"></div>
+      <div class="field"><label for="coarsen">Location decimals<span class="hint">4 is about 11 m (matches the app). Type <code>none</code> for full precision.</span></label>
+        <input type="text" id="coarsen" value="4" autocomplete="off"></div>
+    </div>
+    <div class="only-csv" hidden>
+      <label class="check" style="display:block; margin-top:12px"><input type="checkbox" id="fill-unknown" checked> On vehicles that already exist, fill in details that are still <code>unknown</code> (color, make, model, body type, year) from the CSV. A detail that is already known is never replaced.</label>
+      <label class="check" style="display:block; margin-top:8px"><input type="checkbox" id="skip-same-day" checked> Skip a sighting when the vehicle already has one on the same date, whatever its source (stops overlap with earlier XML or app records from creating duplicates)</label>
+    </div>
+    <details class="only-xml" hidden>
+      <summary>More options</summary>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label for="tz">Extra time zones<span class="hint">Built in: PST PDT MST MDT CST CDT EST EDT AKST AKDT HST UTC GMT. Add others like <code>AEST=10, IST=5.5</code></span></label>
+          <input type="text" id="tz" placeholder="AEST=10" autocomplete="off"></div>
+        <div class="field"><label for="overrides-input">Address fixes (CSV)<span class="hint">Columns <code>address,lat,lng</code>. These win over the lookup.</span></label>
+          <input type="file" id="overrides-input" accept=".csv,text/csv"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label for="media-input">Legacy media folder (optional)<span class="hint">Leave empty to skip old photos; their paths are kept in the notes. Choose the folder that contains <code>media/</code> to import them.</span></label>
+          <input type="file" id="media-input" webkitdirectory multiple></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="s3">
+    <h2 id="s3"><span class="only-xml" hidden>4. </span><span class="only-csv" hidden>5. </span>Convert</h2>
+    <label class="check only-xml" hidden style="display:block; margin-bottom:10px"><input type="checkbox" id="debug" checked> Debug detail: explain every record (line number, where its state came from, how each field was read)</label>
+    <button class="primary" id="convert" disabled>Convert</button>
+    <span id="status" class="hint" role="status" aria-live="polite" style="display:inline; margin-left:8px"></span>
+    <progress id="progress" hidden></progress>
+  </section>
+
+  <section class="card" id="results" hidden aria-labelledby="s4">
+    <h2 id="s4"><span class="only-xml" hidden>5. </span><span class="only-csv" hidden>6. </span>Result</h2>
+    <div id="check-panel" role="status"></div>
+    <div id="validation-panel" role="status"></div>
+    <div class="stats" id="stats"></div>
+    <div id="warnings"></div>
+    <div class="actions">
+      <button class="primary" id="download-zip">Download ZIP</button>
+      <button id="download-anyway" hidden>Ignore conflicts and download anyway</button>
+      <button id="download-records">Download log (CSV)</button>
+      <button id="download-report">Download report (JSON)</button>
+      <button id="download-debug" class="only-xml" hidden>Download debug detail (text)</button>
+    </div>
+    <div id="state-summary"></div>
+    <details id="attention-panel" class="only-csv" hidden><summary>Rows that need a look</summary>
+      <div class="scroll"><table><thead><tr><th>Row</th><th>What happened</th></tr></thead><tbody id="attention-rows"></tbody></table></div>
+    </details>
+    <details id="debug-panel" class="only-xml" hidden open><summary>Debug detail</summary>
+      <div id="debug-files"></div>
+      <h3>Plate state: where it came from</h3><div id="debug-state"></div>
+      <h3>How each XML element was used</h3>
+      <div class="scroll"><table><thead><tr><th>Element</th><th>Becomes</th><th>Count</th><th>Empty</th><th>Examples</th></tr></thead><tbody id="debug-fields"></tbody></table></div>
+      <h3>Elements in the files</h3><div id="debug-elements" class="hint"></div>
+      <h3>Records</h3>
+      <input type="text" id="debug-filter" placeholder="Filter records: token, plate, state, line, vehicle key…" autocomplete="off">
+      <div class="scroll"><table><thead><tr><th>#</th><th>Line</th><th>Token</th><th>Plate (raw → stored)</th><th>State</th><th>From</th><th>Vehicle</th></tr></thead><tbody id="debug-records"></tbody></table></div>
+      <div id="debug-record-detail" class="hint"></div>
+    </details>
+    <h2 style="margin-top:20px">Push to the repository</h2>
+    <ol>
+      <li>Unzip into the repository folder. The ZIP contains <code>data/</code> and, if media was imported, <code>photos/</code>; they merge with what is there.</li>
+      <li id="index-step"></li>
+      <li>Review, then commit and push:
+        <pre id="git-commands">git add data photos
+git commit -m "Import records"
+git push</pre></li>
+    </ol>
+    <p class="hint">Keep the source files and the report out of the repository: they contain street addresses. Make the repository private before pushing real data.</p>
+    <details open><summary>Vehicles in this ZIP</summary>
+      <div class="scroll"><table><thead id="vehicle-head"></thead><tbody id="vehicle-rows"></tbody></table></div>
+    </details>
+  </section>
+</main>
+
+<script>
+(() => {
+'use strict';
+// ====================================================================================
+// Core: a port of scripts/migrate_xml_to_json.py. tests/e2e_xml_tool.py checks that
+// both produce identical files, so change them together.
+// ====================================================================================
+
+const XML_TAG = 'xml-import';
+const UNKNOWN = 'unknown';
+const PHOTO_MAX_BYTES = 500 * 1024;
+const PHOTO_MAX_EDGE = 1600;
+const MAX_PHOTOS_PER_SIGHTING = 6;
+const PLATE_RE = /^[A-Z0-9]{1,20}$/;
+const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tif', '.tiff', '.heic']);
+const COLORS = new Set(['black','white','silver','grey','gray','blue','red','green','brown','tan','beige','gold','orange','yellow','purple','maroon','teal','burgundy','charcoal','pink','bronze','cream']);
+const COLOR_MODIFIERS = new Set(['dark', 'light']);
+const TWO_WORD_MAKES = new Set(['land rover', 'alfa romeo', 'mercedes benz', 'aston martin', 'rolls royce']);
+const BODY_STYLE_BY_MODEL = {
+  'explorer':'suv','tahoe':'suv','highlander':'suv','suburban':'suv','expedition':'suv','pathfinder':'suv','wrangler':'suv','cr-v':'suv','rav4':'suv','escape':'suv','4runner':'suv','pilot':'suv','durango':'suv','equinox':'suv','traverse':'suv',
+  'ram':'truck','f-150':'truck','f150':'truck','silverado':'truck','tacoma':'truck','tundra':'truck','sierra':'truck','ranger':'truck','colorado':'truck',
+  'civic':'sedan','accord':'sedan','camry':'sedan','corolla':'sedan','altima':'sedan','sentra':'sedan','elantra':'sedan','malibu':'sedan','fusion':'sedan',
+  'odyssey':'van','sienna':'van','caravan':'van','transit':'van',
+  'mustang':'coupe','camaro':'coupe','challenger':'coupe',
+  'golf':'hatchback','fit':'hatchback','soul':'hatchback'
+};
+const TZ_OFFSETS = { PST:-8, PDT:-7, MST:-7, MDT:-6, CST:-6, CDT:-5, EST:-5, EDT:-4, AKST:-9, AKDT:-8, HST:-10, UTC:0, GMT:0, Z:0 };
+const MONTHS = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+const FIELD_ALIASES = {
+  alert_token: ['alert_token','token','id','record_id'],
+  media: ['media','photos','images'],
+  vehicle_license: ['vehicle_license','license','license_plate','plate','vehicle_plate'],
+  address: ['address','street_address','location_text'],
+  vehicle_state: ['vehicle_state','state','plate_state','license_state','lic_state','st','province','region','vehicle_license_state','plate_st','issuing_state','registration_state','reg_state'],
+  vehicle_make: ['vehicle_make','make','vehicle','vehicle_description'],
+  month: ['month'], day: ['day'], year: ['year'],
+  comments: ['comments','comment','notes','note','description'],
+  datestamp: ['datestamp','date','timestamp','datetime','date_time']
+};
+const CANONICAL = {};
+for (const [field, aliases] of Object.entries(FIELD_ALIASES)) for (const a of aliases) CANONICAL[a] = field;
+
+class ImportXmlError extends Error {}
+
+// ---------- small helpers (Python-compatible where output must match) ----------
+
+function sha1Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const words = [];
+  const bitLen = bytes.length * 8;
+  for (let i = 0; i < bytes.length; i++) words[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+  words[bitLen >> 5] |= 0x80 << (24 - (bitLen % 32));
+  const total = (((bitLen + 64) >> 9) << 4) + 15;
+  while (words.length <= total) words.push(0);
+  words[total] = bitLen;
+  let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+  const rol = (n, s) => (n << s) | (n >>> (32 - s));
+  const w = new Array(80);
+  for (let i = 0; i < words.length; i += 16) {
+    for (let t = 0; t < 16; t++) w[t] = words[i + t] | 0;
+    for (let t = 16; t < 80; t++) w[t] = rol(w[t-3] ^ w[t-8] ^ w[t-14] ^ w[t-16], 1);
+    let a = h0, b = h1, c = h2, d = h3, e = h4;
+    for (let t = 0; t < 80; t++) {
+      let f, k;
+      if (t < 20) { f = (b & c) | (~b & d); k = 0x5A827999; }
+      else if (t < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1; }
+      else if (t < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC; }
+      else { f = b ^ c ^ d; k = 0xCA62C1D6; }
+      const tmp = (rol(a, 5) + f + e + k + w[t]) | 0;
+      e = d; d = c; c = rol(b, 30); b = a; a = tmp;
+    }
+    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0; h4 = (h4 + e) | 0;
+  }
+  return [h0, h1, h2, h3, h4].map((n) => (n >>> 0).toString(16).padStart(8, '0')).join('');
+}
+const digest = (text) => sha1Hex(text).slice(0, 8);
+
+/** Python's json.dumps(value, sort_keys=True) with default separators and ensure_ascii. */
+function pyJson(value) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'string') {
+    let out = '"';
+    for (const ch of value) {
+      const c = ch.codePointAt(0);
+      if (ch === '"') out += '\\"';
+      else if (ch === '\\') out += '\\\\';
+      else if (ch === '\n') out += '\\n';
+      else if (ch === '\r') out += '\\r';
+      else if (ch === '\t') out += '\\t';
+      else if (ch === '\b') out += '\\b';
+      else if (ch === '\f') out += '\\f';
+      else if (c < 0x20) out += '\\u' + c.toString(16).padStart(4, '0');
+      else if (c < 0x7f || c === 0x7f) out += ch;
+      else if (c <= 0xffff) out += '\\u' + c.toString(16).padStart(4, '0');
+      else { const v = c - 0x10000; out += '\\u' + (0xd800 + (v >> 10)).toString(16) + '\\u' + (0xdc00 + (v & 0x3ff)).toString(16); }
+    }
+    return out + '"';
+  }
+  if (Array.isArray(value)) return '[' + value.map(pyJson).join(', ') + ']';
+  if (typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map((k) => pyJson(k) + ': ' + pyJson(value[k])).join(', ') + '}';
+  }
+  return String(value);
+}
+
+const isUpper = (s) => s.toUpperCase() === s && s.toLowerCase() !== s;
+const isLower = (s) => s.toLowerCase() === s && s.toUpperCase() !== s;
+const pyTitle = (s) => s.replace(/\p{L}+/gu, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
+
+function isoOf(ms) {
+  return new Date(Math.floor(ms / 1000) * 1000).toISOString().replace('.000Z', '.000Z');
+}
+
+// ---------- reading ----------
+
+// ---------- plate state (mirror of scripts/plate_states.py) ----------
+
+const UNKNOWN_STATE = 'XX';
+const STATE_CODES = new Set(["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "AS", "GU", "MP", "PR", "VI", "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT", "AGU", "BCN", "BCS", "CAM", "CHP", "CHH", "CMX", "COA", "COL", "DUR", "GUA", "GRO", "HID", "JAL", "MEX", "MIC", "MOR", "NAY", "NLE", "OAX", "PUE", "QUE", "ROO", "SLP", "SIN", "SON", "TAB", "TAM", "TLA", "VER", "YUC", "ZAC", "USG", "GOV", "XX"]);
+const MX_STATES = ["AGU", "BCN", "BCS", "CAM", "CHP", "CHH", "CMX", "COA", "COL", "DUR", "GUA", "GRO", "HID", "JAL", "MEX", "MIC", "MOR", "NAY", "NLE", "OAX", "PUE", "QUE", "ROO", "SLP", "SIN", "SON", "TAB", "TAM", "TLA", "VER", "YUC", "ZAC"];
+const FEDERAL_STATES = ["USG", "GOV"];
+const STATE_NAMES = {"ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA", "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE", "DISTRICT OF COLUMBIA": "DC", "FLORIDA": "FL", "GEORGIA": "GA", "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA", "KANSAS": "KS", "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD", "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS", "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ", "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK", "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC", "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT", "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY", "PUERTO RICO": "PR", "GUAM": "GU", "VIRGIN ISLANDS": "VI", "AMERICAN SAMOA": "AS", "NORTHERN MARIANA ISLANDS": "MP", "ALBERTA": "AB", "BRITISH COLUMBIA": "BC", "MANITOBA": "MB", "NEW BRUNSWICK": "NB", "NEWFOUNDLAND": "NL", "NOVA SCOTIA": "NS", "NORTHWEST TERRITORIES": "NT", "NUNAVUT": "NU", "ONTARIO": "ON", "PRINCE EDWARD ISLAND": "PE", "QUEBEC": "QC", "SASKATCHEWAN": "SK", "YUKON": "YT", "NEWFOUNDLAND AND LABRADOR": "NL", "NEWFOUNDLAND & LABRADOR": "NL", "NORTH WEST TERRITORIES": "NT", "AGUASCALIENTES": "AGU", "BAJA CALIFORNIA": "BCN", "BAJA CALIFORNIA NORTE": "BCN", "BAJA CALIFORNIA SUR": "BCS", "CAMPECHE": "CAM", "CHIAPAS": "CHP", "CHIHUAHUA": "CHH", "CIUDAD DE MEXICO": "CMX", "MEXICO CITY": "CMX", "DISTRITO FEDERAL": "CMX", "COAHUILA": "COA", "COAHUILA DE ZARAGOZA": "COA", "COLIMA": "COL", "DURANGO": "DUR", "GUANAJUATO": "GUA", "GUERRERO": "GRO", "HIDALGO": "HID", "JALISCO": "JAL", "ESTADO DE MEXICO": "MEX", "MICHOACAN": "MIC", "MORELOS": "MOR", "NAYARIT": "NAY", "NUEVO LEON": "NLE", "OAXACA": "OAX", "PUEBLA": "PUE", "QUERETARO": "QUE", "QUINTANA ROO": "ROO", "SAN LUIS POTOSI": "SLP", "SINALOA": "SIN", "SONORA": "SON", "TABASCO": "TAB", "TAMAULIPAS": "TAM", "TLAXCALA": "TLA", "VERACRUZ": "VER", "YUCATAN": "YUC", "ZACATECAS": "ZAC"};
+const STATE_ALIASES = {"CALIF": "CA", "CAL": "CA", "CALI": "CA", "WASH": "WA", "PENN": "PA", "PENNA": "PA", "MASS": "MA", "TENN": "TN", "MICH": "MI", "MINN": "MN", "MISS": "MS", "OKLA": "OK", "ORE": "OR", "ILL": "IL", "FLA": "FL", "NEV": "NV", "ARIZ": "AZ", "COLO": "CO", "CONN": "CT", "WISC": "WI", "WIS": "WI", "PEI": "PE", "CDMX": "CMX", "DF": "CMX", "B.C.": "BC"};
+const STATE_NAMES_LONGEST_FIRST = Object.keys(STATE_NAMES).sort((a, b) => b.length - a.length);
+
+const foldText = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+const FEDERAL_RE = /^(USG|GOV)(?:[\s\-_:/]+([A-Z0-9]{1,8}))?$/;
+const FEDERAL_TEXT = /(USG|GOV)(?:[ \-/]+([A-Z0-9]{1,4}))?(?![A-Z0-9])/;
+
+/** USG / GOV with an optional code ("usg g42" gives USG-G42), or null. */
+function federalState(value) {
+  const m = FEDERAL_RE.exec(foldText(value));
+  return m ? (m[2] ? `${m[1]}-${m[2]}` : m[1]) : null;
+}
+/** A known code (CA, SON, XX, USG, GOV) or USG / GOV with a code (GOV-DHS). */
+function isValidState(value) { return STATE_CODES.has(value) || /^(?:USG|GOV)-[A-Z0-9]{1,8}$/.test(value); }
+/** [state, plate] from a plate key: the plate has no dash, so the state is everything before the last one. */
+function splitKey(key) { const i = String(key).lastIndexOf('-'); return i < 1 ? null : [key.slice(0, i), key.slice(i + 1)]; }
+
+/** [code, how]: code is a state/province code (CA, SON), USG / GOV with an optional code, or XX. */
+function parseState(value) {
+  const raw = foldText(value).replace(/\.+$/, '');
+  if (!raw) return [UNKNOWN_STATE, 'empty'];
+  const fed = federalState(raw);
+  if (fed) return [fed, 'federal'];
+  if (STATE_CODES.has(raw) && raw !== UNKNOWN_STATE) return [raw, 'code'];
+  if (Object.prototype.hasOwnProperty.call(STATE_NAMES, raw)) return [STATE_NAMES[raw], 'name'];
+  if (Object.prototype.hasOwnProperty.call(STATE_ALIASES, raw)) return [STATE_ALIASES[raw], 'abbreviation'];
+  return [UNKNOWN_STATE, 'unrecognised'];
+}
+
+/** Find "State: CA" / "state=California" in free text -> [code, matchedText] or null. */
+function stateFromText(text) {
+  const m = /\bstate\s*[:=]\s*([\p{L}][\p{L}\p{N}_ .\-]*)/iu.exec(text || '');
+  if (!m) return null;
+  const candidate = foldText(m[1]).replace(/[. ]+$/, ''); // "Baja California Sur." still names the state
+  const matched = m[0].trim();
+  for (const name of STATE_NAMES_LONGEST_FIRST) if (candidate === name || candidate.startsWith(name + ' ')) return [STATE_NAMES[name], matched];
+  const fed = FEDERAL_TEXT.exec(candidate);
+  if (fed && fed.index === 0) return [fed[2] ? `${fed[1]}-${fed[2]}` : fed[1], matched];
+  const word = /^[A-Z]{2,6}/.exec(candidate);
+  return [parseState(word ? word[0] : candidate.split(' ')[0])[0], matched];
+}
+
+/** {code, source, raw}. Order: a state element; "State: XX" in comments/address/other text; the default; unknown. */
+function resolveState(fields, extras, defaultState = UNKNOWN_STATE) {
+  const raw = fields.vehicle_state;
+  if (raw) {
+    const [code] = parseState(raw);
+    return { code, source: code !== UNKNOWN_STATE ? 'element' : 'element (unrecognised)', raw };
+  }
+  const texts = [['comments', fields.comments], ['address', fields.address], ...extras.map(([n, v]) => [n, v])];
+  for (const [where, text] of texts) {
+    const found = stateFromText(text);
+    if (found) {
+      const [code, matched] = found;
+      return { code, source: code !== UNKNOWN_STATE ? `text in ${where}` : `text in ${where} (unrecognised)`, raw: matched };
+    }
+  }
+  if (defaultState !== UNKNOWN_STATE) return { code: defaultState, source: 'default', raw: null };
+  return { code: UNKNOWN_STATE, source: 'none found', raw: null };
+}
+
+
+function decodeXmlBytes(bytes, info = null) {
+  let text; let used = 'utf-8';
+  if (bytes.length >= 2 && ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff))) {
+    text = new TextDecoder(bytes[0] === 0xff ? 'utf-16le' : 'utf-16be').decode(bytes.subarray(2)); used = 'utf-16 (byte order mark)';
+  } else if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    text = new TextDecoder('utf-8').decode(bytes.subarray(3)); used = 'utf-8 (byte order mark)';
+  } else if (bytes.subarray(0, 200).includes(0)) {
+    text = new TextDecoder(bytes[1] === 0 ? 'utf-16le' : 'utf-16be').decode(bytes); used = 'utf-16 (no byte order mark)';
+  } else {
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch { text = Array.from(bytes, (b) => String.fromCharCode(b)).join(''); used = 'latin-1 (not valid UTF-8)'; } // latin-1, like the Python tool
+  }
+  if (info) {
+    const declared = /^\s*<\?xml[^>]*?encoding=["']([^"']+)/.exec(text);
+    Object.assign(info, { bytes: bytes.length, encoding_used: used, encoding_declared: declared ? declared[1] : null, lines: text.split('\n').length });
+  }
+  if (/<!(DOCTYPE|ENTITY)/i.test(text)) throw new ImportXmlError('refusing XML with a DOCTYPE or ENTITY declaration');
+  return text.replace(/^\s*<\?xml[^>]*\?>/, '');
+}
+
+const localName = (n) => (n.localName || n.nodeName || '').toLowerCase();
+function elementText(el) {
+  const parts = [];
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_CDATA_SECTION);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) { const t = n.nodeValue.trim(); if (t) parts.push(t); }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+const childElements = (el) => Array.from(el.children);
+function isRecord(el) {
+  if (localName(el) === 'record') return true;
+  return childElements(el).some((c) => ['alert_token', 'vehicle_license'].includes(localName(c)));
+}
+
+const XML_NAME = '[A-Za-z_][A-Za-z0-9_.\\-]*(?::[A-Za-z_][A-Za-z0-9_.\\-]*)?';
+const XML_ATTR = XML_NAME + '\\s*=\\s*(?:"[^"<]*"|\'[^\'<]*\')';
+// Every kind of markup, strictly. Anything else that starts with "<" is text.
+const TOKEN_RE = new RegExp(
+  '<!--[\\s\\S]*?-->|<!\\[CDATA\\[[\\s\\S]*?\\]\\]>|<\\?[\\s\\S]*?\\?>' +
+  '|</(' + XML_NAME + ')\\s*>' +
+  '|<(' + XML_NAME + ')((?:\\s+' + XML_ATTR + ')*)\\s*(/?)>' +
+  '|<', 'g');
+const STRAY_AMP = /&(?!(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9A-Fa-f]+);)/g;
+const BAD_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f]/g;
+
+function lineTable(text) {
+  const nl = []; for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) nl.push(i);
+  return (pos) => { let lo = 0, hi = nl.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (nl[mid] < pos) lo = mid + 1; else hi = mid; } return [lo + 1, pos - (lo ? nl[lo - 1] : -1)]; };
+}
+
+/**
+ * Fix the usual damage in exported XML. Text with a literal "<" or "&" in it is the common case
+ * ("<State: CA>", "a < b", "AT&T"), and so is HTML-style markup typed into a comment (<b class=x>, <br>).
+ * The file is walked tag by tag: a tag that is not strictly valid XML, a closing tag with no opening tag,
+ * or an opening tag that is never closed becomes plain text; a bare "&" becomes "&amp;"; control
+ * characters are dropped. Only used after a strict parse has failed. `details` receives one entry per fix.
+ */
+function repairXml(text, details = null) {
+  let count = 0; const where = lineTable(text);
+  const out = []; const stack = []; let pos = 0;
+  const note = (kind, at) => {
+    if (details && details.length < 200) {
+      const [line, column] = where(at);
+      details.push({ line, column, kind, context: text.slice(Math.max(0, at - 30), at + 50).replace(/\n/g, ' ') });
+    }
+  };
+  const amps = (chunk, at) => chunk.replace(STRAY_AMP, (_m, offset) => { count++; note('stray &', at + offset); return '&amp;'; });
+  const asText = (token, at, kind) => { count++; note(kind, at); return '&lt;' + amps(token.slice(1), at + 1); };
+  TOKEN_RE.lastIndex = 0;
+  for (let m = TOKEN_RE.exec(text); m; m = TOKEN_RE.exec(text)) {
+    out.push(amps(text.slice(pos, m.index), pos));
+    pos = m.index + m[0].length; const tok = m[0];
+    if (tok.startsWith('<!--') || tok.startsWith('<![CDATA[') || tok.startsWith('<?')) out.push(tok);
+    else if (m[1]) { // closing tag
+      const name = m[1];
+      if (stack.length && stack[stack.length - 1][0] === name) { stack.pop(); out.push(tok); }
+      else if (stack.some((e) => e[0] === name)) {
+        while (stack[stack.length - 1][0] !== name) { const [n, idx, at] = stack.pop(); out[idx] = asText(out[idx], at, `unclosed <${n}>`); }
+        stack.pop(); out.push(tok);
+      } else out.push(asText(tok, m.index, `closing </${name}> with no opening tag`));
+    } else if (m[2]) { // opening tag
+      out.push(amps(tok, m.index));
+      if (!m[4]) stack.push([m[2], out.length - 1, m.index]);
+    } else out.push(asText(tok, m.index, 'stray <'));
+  }
+  out.push(amps(text.slice(pos), pos));
+  const joined = out.join('');
+  const cleaned = joined.replace(BAD_CHARS, '');
+  count += joined.length - cleaned.length;
+  if (details) details.sort((a, b) => a.line - b.line || a.column - b.column);
+  return { text: cleaned, count };
+}
+
+/** "line 59232: ...the text there..." for a DOMParser error message. */
+function describeParseError(msg, text) {
+  const m = /line (\d+) at column (\d+)/.exec(msg) || /Line Number (\d+), Column (\d+)/.exec(msg);
+  if (!m) return msg;
+  const line = +m[1], col = +m[2]; const src = text.split('\n')[line - 1] || '';
+  return `${msg} | line ${line}: ...${src.slice(Math.max(0, col - 60), col + 60)}...`;
+}
+
+function parseXml(text, info = null) {
+  const tryParse = (t) => {
+    const d = new DOMParser().parseFromString(t, 'application/xml');
+    const err = d.getElementsByTagName('parsererror')[0];
+    return { doc: err ? null : d, msg: err ? err.textContent.split('\n')[0] : '' };
+  };
+  let { doc, msg } = tryParse(text);
+  let repaired = 0; const details = []; let firstError = null;
+  if (!doc) {
+    firstError = describeParseError(msg, text);
+    const fixed = repairXml(text, details);
+    const second = tryParse(fixed.text);
+    if (!second.doc) throw new ImportXmlError(`XML is not well formed (even after repair): ${describeParseError(second.msg, fixed.text)}; first error: ${firstError}`);
+    doc = second.doc; repaired = fixed.count; text = fixed.text;
+  }
+  const where = lineTable(text); let cursor = 0;
+  const lineOf = (el) => { // line of the next opening tag with this name, in document order
+    const name = localName(el).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('<(?:[A-Za-z0-9_.\\-]+:)?' + name + '(?=[\\s/>])', 'gi'); re.lastIndex = cursor;
+    const m = re.exec(text); if (!m) return null;
+    cursor = m.index + m[0].length; return where(m.index)[0];
+  };
+  const rows = [];
+  const readRecord = (el) => {
+    const fields = {}; const extras = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name === 'xmlns' || a.name.startsWith('xmlns:')) continue; // namespace declarations are not data
+      extras.push([(a.localName || a.name).toLowerCase(), a.value.trim()]);
+    }
+    for (const sub of childElements(el)) {
+      const name = localName(sub); const value = elementText(sub);
+      const canon = Object.prototype.hasOwnProperty.call(CANONICAL, name) ? CANONICAL[name] : null;
+      if (canon && !(canon in fields)) fields[canon] = value; else extras.push([name, value]);
+    }
+    return [fields, extras.filter(([, v]) => v)];
+  };
+  const noteRecord = (el, group) => {
+    if (!info) return;
+    info.records.push({
+      line: lineOf(el), group, element: localName(el),
+      children: [...childElements(el).map((sub) => [localName(sub), elementText(sub)]),
+        ...Array.from(el.attributes).filter((a) => !(a.name === 'xmlns' || a.name.startsWith('xmlns:'))).map((a) => ['@' + (a.localName || a.name).toLowerCase(), a.value.trim()])],
+      snippet: new XMLSerializer().serializeToString(el).replace(/\s+/g, ' ').slice(0, 600)
+    });
+  };
+  const walk = (node, group) => {
+    for (const child of childElements(node)) {
+      if (isRecord(child)) { const [f, x] = readRecord(child); noteRecord(child, group); rows.push([group, f, x]); }
+      else walk(child, localName(child));
+    }
+  };
+  const root = doc.documentElement;
+  if (info) {
+    info.records = []; info.repaired = repaired; info.repairs = details; info.first_error = firstError;
+    const census = {}; census[localName(root)] = 1;
+    for (const el of Array.from(root.getElementsByTagName('*'))) { const n = localName(el); census[n] = (census[n] || 0) + 1; }
+    info.elements = census;
+  }
+  if (isRecord(root)) { const [f, x] = readRecord(root); noteRecord(root, localName(root)); rows.push([localName(root), f, x]); }
+  else walk(root, localName(root));
+  rows.repaired = repaired;
+  return rows;
+}
+
+// ---------- field mapping ----------
+
+function normalizePlate(raw) {
+  const plate = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!plate || ['NOPLATE', 'NONE', 'UNKNOWN', 'NA', 'NULL'].includes(plate)) return null;
+  return plate;
+}
+
+function parseMake(text) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const colorWords = [];
+  while (words.length && (COLORS.has(words[0].toLowerCase()) || (COLOR_MODIFIERS.has(words[0].toLowerCase()) && words.length > 1))) {
+    colorWords.push(words.shift().toLowerCase());
+    if (colorWords.length === 2) break;
+  }
+  const color = colorWords.join(' ').replace(/gray/g, 'grey') || UNKNOWN;
+  let make, modelWords;
+  if (words.length >= 2 && TWO_WORD_MAKES.has(words.slice(0, 2).join(' ').toLowerCase())) { make = words.slice(0, 2).join(' '); modelWords = words.slice(2); }
+  else if (words.length) { make = words[0]; modelWords = words.slice(1); }
+  else { make = 'Unknown'; modelWords = []; }
+  return [color, (isUpper(make) || isLower(make)) ? pyTitle(make) : make, modelWords.join(' ') || null];
+}
+
+const guessBodyStyle = (model) => BODY_STYLE_BY_MODEL[(model || '').toLowerCase().split(' ')[0]] || UNKNOWN;
+
+function monthNumber(value) {
+  const v = String(value || '').trim();
+  if (/^\d+$/.test(v) && +v >= 1 && +v <= 12) return +v;
+  return MONTHS[v.toUpperCase().slice(0, 3)] || null;
+}
+
+/** Local wall-clock parts at a UTC offset (hours) -> epoch ms, or null if the date is impossible. */
+function utcMs(y, mo, d, hh, mm, ss, offsetHours) {
+  if (!(y >= 1 && y <= 9999) || mo < 1 || mo > 12 || hh > 23 || mm > 59 || ss > 59 || d < 1) return null;
+  if (!(Math.abs(offsetHours) < 24)) return null;
+  const dt = new Date(0); dt.setUTCFullYear(y, mo - 1, d); dt.setUTCHours(hh, mm, ss, 0);
+  if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return dt.getTime() - offsetHours * 3600000;
+}
+
+const EPOCH_MS = 0;
+
+/** Returns [epochMs, note|null]. Never throws: worst case is 1970-01-01 ("date unknown"). */
+function parseTimestamp(fields, offsets) {
+  const stamp = String(fields.datestamp || '').trim();
+  let m = stamp.match(/^(?:[A-Za-z]{3,9},?\s+)?([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([A-Za-z]+)?$/);
+  if (m && monthNumber(m[1])) {
+    let zone = (m[7] || 'UTC').toUpperCase(); let note = null;
+    if (!(zone in offsets)) { note = `time zone ${zone} not recognised; read as UTC; add its offset to correct`; zone = 'UTC'; }
+    const ms = utcMs(+m[3], monthNumber(m[1]), +m[2], +m[4], +m[5], +(m[6] || 0), offsets[zone]);
+    if (ms !== null) return [ms, note];
+  }
+  m = stamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})?$/);
+  if (m) {
+    let off = 0;
+    if (m[7] && m[7] !== 'Z') {
+      const sign = m[7][0] === '-' ? -1 : 1; const digits = m[7].slice(1).replace(':', '');
+      off = sign * (+digits.slice(0, 2) + +digits.slice(2) / 60);
+    }
+    const ms = utcMs(+m[1], +m[2], +m[3], +(m[4] || 12), +(m[5] || 0), +(m[6] || 0), off);
+    if (ms !== null) return [ms, m[4] ? null : 'time of day unknown; set to 12:00 UTC'];
+  }
+  if (/^\d{9,13}$/.test(stamp)) {
+    const ms = stamp.length > 10 ? +stamp : +stamp * 1000;
+    if (Number.isFinite(ms)) return [ms, null];
+  }
+  const month = monthNumber(fields.month);
+  if (month && /^\d+$/.test(String(fields.year || '')) && /^\d+$/.test(String(fields.day || ''))) {
+    const ms = utcMs(+fields.year, month, +fields.day, 12, 0, 0, 0);
+    if (ms !== null) return [ms, 'time of day unknown (no usable datestamp); set to 12:00 UTC'];
+  }
+  return [EPOCH_MS, 'date unknown (no usable date in the XML); set to 1970-01-01'];
+}
+
+function pickMedia(field) {
+  const paths = String(field || '').split(/[,;\n]/).map((p) => p.trim()).filter(Boolean);
+  const ext = (p) => { const b = p.split('/').pop(); const i = b.lastIndexOf('.'); return i > 0 ? b.slice(i).toLowerCase() : ''; };
+  const stem = (p) => { const b = p.split('/').pop(); const i = b.lastIndexOf('.'); return i > 0 ? b.slice(0, i) : b; };
+  const images = paths.filter((p) => IMAGE_EXT.has(ext(p)));
+  const real = images.filter((p) => !stem(p).toLowerCase().startsWith('preview'));
+  return [(real.length ? real : images).slice(0, MAX_PHOTOS_PER_SIGHTING), paths.filter((p) => !images.includes(p))];
+}
+
+// ---------- geocoding ----------
+
+class GeocodeUnavailable extends Error {}
+const normalizeAddress = (a) => String(a || '').toUpperCase().replace(/\s+/g, ' ').trim();
+
+function jsonp(url, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const name = '__ptx_cb_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const done = (fn, arg) => { clearTimeout(timer); delete window[name]; script.remove(); fn(arg); };
+    const timer = setTimeout(() => done(reject, new GeocodeUnavailable('timed out')), timeoutMs);
+    window[name] = (data) => done(resolve, data);
+    script.onerror = () => done(reject, new GeocodeUnavailable('could not reach the service'));
+    script.src = url + '&format=jsonp&callback=' + name;
+    document.head.appendChild(script);
+  });
+}
+
+async function censusGeocode(address) {
+  // The Census geocoder does not send CORS headers, so it is called with JSONP.
+  const data = await jsonp('https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?benchmark=Public_AR_Current&address=' + encodeURIComponent(address));
+  const matches = ((data && data.result) || {}).addressMatches || [];
+  if (!matches.length) return null;
+  return [Number(matches[0].coordinates.y), Number(matches[0].coordinates.x)];
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function nominatimGeocode(address) {
+  await sleep(1100);
+  let res;
+  try { res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(address), { headers: { Accept: 'application/json' } }); }
+  catch (e) { throw new GeocodeUnavailable(String(e)); }
+  if (!res.ok) throw new GeocodeUnavailable('HTTP ' + res.status);
+  const data = await res.json();
+  return data.length ? [Number(data[0].lat), Number(data[0].lon)] : null;
+}
+
+class Geocoder {
+  constructor({ provider = null, overrides = {}, defaultArea = '', coarsen = 4, cache = {}, onProgress = null } = {}) {
+    Object.assign(this, { provider, overrides, defaultArea: defaultArea.trim(), coarsen, cache, onProgress });
+    this.failures = 0; this.disabled = false; this.lookups = 0;
+    this.stats = { matched: 0, unmatched: [], unavailable: 0, from_cache: 0, from_overrides: 0 };
+  }
+  queryFor(address) {
+    const a = String(address || '').replace(/\s+/g, ' ').trim();
+    if (this.defaultArea && !a.toUpperCase().includes(this.defaultArea.split(/\s+/)[0].toUpperCase())) return `${a} ${this.defaultArea}`;
+    return a;
+  }
+  result(pair) {
+    if (!pair) return null;
+    let [lat, lng] = pair;
+    if (this.coarsen !== null) { lat = Number(lat.toFixed(this.coarsen)); lng = Number(lng.toFixed(this.coarsen)); }
+    this.stats.matched++;
+    return { lat, lng };
+  }
+  async locate(address) {
+    const key = normalizeAddress(address);
+    if (!key) return null;
+    if (key in this.overrides) { this.stats.from_overrides++; return this.result(this.overrides[key]); }
+    const query = this.queryFor(address); const qkey = normalizeAddress(query);
+    if (qkey in this.cache) { this.stats.from_cache++; return this.result(this.cache[qkey]); }
+    if (!this.provider || this.disabled) return null;
+    let found;
+    try { found = await this.provider(query); }
+    catch (e) {
+      if (!(e instanceof GeocodeUnavailable)) throw e;
+      this.stats.unavailable++; this.failures++;
+      if (this.failures >= 3) this.disabled = true;
+      return null;
+    }
+    this.failures = 0; this.lookups++;
+    if (this.onProgress) this.onProgress(this.lookups);
+    this.cache[qkey] = found ? [found[0], found[1]] : null;
+    if (!found) this.stats.unmatched.push(address);
+    return this.result(found);
+  }
+}
+
+function parseOverrides(csvText) {
+  const out = {};
+  const lines = csvText.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+  const split = (line) => { const cells = []; let cur = '', q = false; for (const ch of line) { if (ch === '"') q = !q; else if (ch === ',' && !q) { cells.push(cur); cur = ''; } else cur += ch; } cells.push(cur); return cells.map((c) => c.trim()); };
+  if (!lines.length) return out;
+  const head = split(lines[0]).map((h) => h.toLowerCase());
+  const ia = head.indexOf('address'), iy = head.indexOf('lat'), ix = head.indexOf('lng');
+  for (const line of lines.slice(1)) {
+    const c = split(line); const lat = parseFloat(c[iy]), lng = parseFloat(c[ix]);
+    if (ia >= 0 && Number.isFinite(lat) && Number.isFinite(lng)) out[normalizeAddress(c[ia])] = [lat, lng];
+  }
+  return out;
+}
+
+// ---------- photos ----------
+
+async function convertPhoto(file) {
+  const bmp = await createImageBitmap(file);
+  let w = bmp.width, h = bmp.height;
+  const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(w, h));
+  w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+  const canvas = document.createElement('canvas');
+  const draw = () => { canvas.width = w; canvas.height = h; const g = canvas.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(bmp, 0, 0, w, h); };
+  const toJpeg = (q) => new Promise((res) => canvas.toBlob((b) => res(b), 'image/jpeg', q));
+  draw();
+  let blob;
+  for (const q of [0.82, 0.72, 0.62, 0.52, 0.42, 0.32]) { blob = await toJpeg(q); if (blob && blob.size <= PHOTO_MAX_BYTES) break; }
+  while (blob && blob.size > PHOTO_MAX_BYTES && Math.min(w, h) > 200) { w = Math.round(w * 0.8); h = Math.round(h * 0.8); draw(); blob = await toJpeg(0.32); }
+  bmp.close && bmp.close();
+  if (!blob) throw new Error('browser could not encode a JPEG');
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+function buildMediaIndex(files) {
+  const index = new Map();
+  for (const f of files) {
+    const rel = (f.webkitRelativePath || f.name).replace(/\\/g, '/');
+    const parts = rel.split('/');
+    for (let i = 0; i < parts.length; i++) { const key = parts.slice(i).join('/').toLowerCase(); if (!index.has(key)) index.set(key, f); }
+  }
+  return index;
+}
+function findMedia(index, rel) {
+  const clean = rel.replace(/\\/g, '/').replace(/^\.?\//, '');
+  if (clean.split('/').includes('..')) return null;
+  return index.get(clean.toLowerCase()) || null;
+}
+
+// ---------- build records ----------
+
+function mergeWithExisting(existing, incoming, sightings) {
+  const byId = new Map(((existing && existing.sightings) || []).map((s) => [s.id, s]));
+  let previousLast = null;
+  for (const s of byId.values()) if (previousLast === null || s.timestamp > previousLast) previousLast = s.timestamp;
+  for (const s of sightings) if (!byId.has(s.id)) byId.set(s.id, s);
+  const merged = Array.from(byId.values()).sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+  const base = existing ? { ...existing } : { ...incoming };
+  if (existing) base.plateAliases = Array.from(new Set([...(existing.plateAliases || []), ...incoming.plateAliases])).sort();
+  base.sightings = merged;
+  if (!existing || previousLast === null || merged[merged.length - 1].timestamp > previousLast) base.flag = merged[merged.length - 1].flag;
+  base.firstSeen = merged[0].timestamp;
+  base.lastSeen = merged[merged.length - 1].timestamp;
+  return base;
+}
+
+// Which existing vehicle should new sightings for this identity join? (mirrors find_target in the Python tool)
+function findTarget(identity, key, plate, state, vehicles, plates) {
+  if (vehicles[key] || !identity.startsWith('plate:') || !plate) return [key, null];
+  const name = `${state}-${plate}`;
+  const owner = (plates[name] || {}).currentVehicleKey;
+  if (owner && vehicles[owner]) return [owner, 'plate record'];
+  const holders = Object.keys(vehicles).filter((k) => (vehicles[k].plateAliases || []).includes(name)).sort();
+  if (holders.length === 1) return [holders[0], 'alias'];
+  if (state === UNKNOWN_STATE) {
+    const others = new Set();
+    for (const [n, p] of Object.entries(plates)) if (n.endsWith('-' + plate) && n !== name && p.currentVehicleKey && vehicles[p.currentVehicleKey]) others.add(p.currentVehicleKey);
+    if (others.size === 1) return [Array.from(others)[0], 'same plate, state set since import'];
+  }
+  return [key, null];
+}
+
+const parseTs = (v) => { const t = Date.parse(String(v)); return Number.isFinite(t) ? t / 1000 : 0; };
+
+function searchFields(v) {
+  const out = {};
+  for (const k of ['color', 'make', 'model', 'bodyStyle']) if (typeof v[k] === 'string' && v[k] && v[k] !== 'unknown') out[k] = v[k];
+  if (Number.isInteger(v.year)) out.year = v.year;
+  const feats = (v.distinguishing || []).filter((f) => f && f !== 'unknown');
+  if (feats.length) out.features = feats;
+  return out;
+}
+function indexEntry(vehicle) {
+  const located = (vehicle.sightings || []).filter((s) => s.location && Number.isFinite(s.location.lat) && Number.isFinite(s.location.lng));
+  let latest = null;
+  for (const s of located) if (!latest || parseTs(s.timestamp) > parseTs(latest.timestamp)) latest = s;
+  return {
+    vehicleKey: vehicle.vehicleKey, displayName: vehicle.displayName || '', flag: vehicle.flag || 'unknown',
+    lastSeen: vehicle.lastSeen === undefined ? null : vehicle.lastSeen,
+    location: latest ? { lat: latest.location.lat, lng: latest.location.lng } : null,
+    plateAliases: vehicle.plateAliases || [], ...searchFields(vehicle)
+  };
+}
+
+const dump = (v) => JSON.stringify(v, null, 2) + '\n';
+
+/**
+ * rows: [[group, fields, extras], ...]
+ * options: { flag, offsets, geocoder, mediaIndex|null, existingVehicles: {key: obj}, existingPlates: {"ST-PLATE": obj}, onStatus,
+ *            defaultState, trace: [] (pass an array to get a per-record explanation) }
+ * Returns { files: Map(path -> string|Uint8Array), report, counts, vehicles }
+ */
+async function buildXml(rows, options) {
+  const { flag = 'confirmed', geocoder, mediaIndex = null, existingVehicles = null, existingPlates = {}, onStatus = () => {}, defaultState = UNKNOWN_STATE, trace = null } = options;
+  const offsets = { ...TZ_OFFSETS, ...(options.offsets || {}) };
+  const report = { files: [], files_failed: [], unmapped_fields: {}, needs_review: [], assumptions: [], duplicate_records: [], media_not_imported: [], plate_conflicts: [], plates_not_storable: {}, already_imported: [], redirected: [], flag_changed: [], new_records: [], records: [] };
+  const files = new Map();
+  const groups = new Map();
+  const states = report.states = { by_source: {}, by_code: {}, unrecognised: {}, plates_without_state: 0 };
+  const bump = (obj, k) => { obj[k] = (obj[k] || 0) + 1; };
+
+  rows.forEach(([groupName, fields, extras], index) => {
+    const plate = normalizePlate(fields.vehicle_license);
+    const token = fields.alert_token || digest(groupName + pyJson([fields, extras]));
+    const state = plate ? resolveState(fields, extras, defaultState) : { code: UNKNOWN_STATE, source: 'no plate', raw: null };
+    const keyText = plate ? `${state.code}-${plate}` : null;
+    const identity = plate ? `plate:${keyText}` : `noplate:${token}`;
+    if (plate) {
+      bump(states.by_source, state.source); bump(states.by_code, state.code);
+      if (state.code === UNKNOWN_STATE) states.plates_without_state++;
+      if (state.source.includes('unrecognised')) bump(states.unrecognised, state.raw);
+    }
+    if (plate && !PLATE_RE.test(plate)) (report.plates_not_storable[plate] = report.plates_not_storable[plate] || []).push(token);
+    for (const [name, value] of extras) (report.unmapped_fields[name] = report.unmapped_fields[name] || []).push({ alert_token: token, value });
+    let entry = null;
+    if (trace) {
+      entry = { record: index + 1, alert_token: token, group: groupName,
+        plate: { raw: fields.vehicle_license === undefined ? null : fields.vehicle_license, normalized: plate, storable: !!(plate && PLATE_RE.test(plate)) },
+        state, plate_key: keyText, identity, fields: { ...fields }, extras: extras.map((e) => [...e]), decisions: [] };
+      trace.push(entry);
+    }
+    if (!groups.has(identity)) groups.set(identity, []);
+    groups.get(identity).push([plate, token, fields, extras, state.code, entry]);
+  });
+  const byPlate = {};
+  for (const identity of groups.keys()) {
+    if (!identity.startsWith('plate:')) continue;
+    const rest = identity.slice(6); const i = rest.indexOf('-');
+    (byPlate[rest.slice(i + 1)] = byPlate[rest.slice(i + 1)] || new Set()).add(rest.slice(0, i));
+  }
+  report.state_ambiguous = Object.keys(byPlate).sort().filter((p) => byPlate[p].has(UNKNOWN_STATE) && byPlate[p].size > 1)
+    .map((p) => ({ plate: p, states: Array.from(byPlate[p]).sort() }));
+
+  const counts = { vehicles: 0, sightings: 0, photos: 0, plates: 0, located: 0, duplicates: 0, already_imported: 0 };
+  const vehicles = {}; const plates = {}; const summary = [];
+  const identities = Array.from(groups.keys()).sort();
+  let done = 0;
+
+  const vehiclesMem = { ...(existingVehicles || {}) }; const platesMem = { ...existingPlates };
+  const known = new Map();
+  for (const [vk, v] of Object.entries(vehiclesMem)) for (const s of v.sightings || []) { known.set(s.id, vk); if (s.source) known.set(s.source, vk); }
+
+  async function backfillMedia(item, owner, sid, vehicle) {
+    const [, token, fields] = item;
+    const target = vehicle.sightings.find((x) => x.id === sid || x.source === `${XML_TAG}:${token}`);
+    if (!target || (target.photos && target.photos.length)) return;
+    const [paths] = pickMedia(fields.media);
+    const [whenMs] = parseTimestamp(fields, offsets);
+    const stamp = new Date(whenMs).toISOString().replace(/[-:]/g, '').slice(0, 15);
+    const added = [];
+    for (let n = 1; n <= paths.length; n++) {
+      const rel = paths[n - 1]; const file = findMedia(mediaIndex, rel);
+      if (!file) { report.media_not_imported.push({ alert_token: token, path: rel, reason: 'file not found in the media folder' }); continue; }
+      const dest = `photos/${owner}_${stamp}_${String(n).padStart(3, '0')}.jpg`;
+      try { files.set(dest, await convertPhoto(file)); added.push(dest); }
+      catch (e) { report.media_not_imported.push({ alert_token: token, path: rel, reason: `could not convert: ${e.message || e}` }); }
+    }
+    if (!added.length) return;
+    target.photos = added;
+    if (target.notes) target.notes = target.notes.split('\n').filter((ln) => !ln.startsWith('Legacy media (not imported):')).join('\n') || null;
+    counts.photos += added.length;
+    vehicles[owner] = vehicle;
+    files.set(`data/vehicles/${owner}.json`, dump(vehicle));
+  }
+
+  for (const identity of identities) {
+    const baseKey = `VEH_${digest('xml:' + identity)}`;
+    const items = [];
+    for (const it of groups.get(identity)) {
+      const token = it[1]; const entry = it[5]; const sid = `S_${digest('xml:' + token)}`;
+      const owner = known.get(sid) || known.get(`${XML_TAG}:${token}`);
+      if (!owner) { items.push(it); continue; }
+      // Already in the data (possibly edited since): never touched again, except photos.
+      counts.already_imported++; report.already_imported.push(token);
+      report.records.push({ alert_token: token, result: 'already imported', vehicle: owner, plate: it[0] ? `${it[4]}-${it[0]}` : null, timestamp: isoOf(parseTimestamp(it[2], offsets)[0]), located: null });
+      if (entry) { entry.vehicle_key = owner; entry.sighting_id = sid; entry.decisions.push({ skipped: 'already in the data; left as it is' }); }
+      if (mediaIndex) await backfillMedia(it, owner, sid, vehiclesMem[owner]);
+    }
+    if (!items.length) continue;
+    const plate = items[0][0]; const stateCode = items[0][4];
+    const [key, how] = findTarget(identity, baseKey, plate, stateCode, vehiclesMem, platesMem);
+    if (how) report.redirected.push({ identity, joined_vehicle: key, because: how });
+    const storable = !!(plate && PLATE_RE.test(plate));
+    const keepPlates = !!how || (!!vehiclesMem[key] && !(vehiclesMem[key].plateAliases || []).includes(`${stateCode}-${plate}`));
+    const sightings = new Map(); let newest = null; let photoCount = 0; let located = 0;
+
+    for (const [, token, fields, extras, , entry] of items) {
+      const sid = `S_${digest('xml:' + token)}`;
+      if (sightings.has(sid)) { counts.duplicates++; report.duplicate_records.push(token); report.records.push({ alert_token: token, result: 'repeated in this file', vehicle: key, plate: plate ? `${stateCode}-${plate}` : null, timestamp: isoOf(parseTimestamp(fields, offsets)[0]), located: null }); }
+      const [whenMs, timeNote] = parseTimestamp(fields, offsets);
+      if (entry) {
+        entry.vehicle_key = key; entry.sighting_id = sid;
+        entry.decisions.push({ timestamp: { raw: [fields.datestamp ?? null, fields.month ?? null, fields.day ?? null, fields.year ?? null], result: isoOf(whenMs), note: timeNote || null } });
+      }
+      if (whenMs === EPOCH_MS) report.needs_review.push({ alert_token: token, why: 'date unknown; set to 1970-01-01' });
+      else if (timeNote) report.assumptions.push({ alert_token: token, note: timeNote });
+
+      const notes = [];
+      if (fields.comments) notes.push(fields.comments);
+      if (fields.address) notes.push(`Address: ${fields.address}`);
+      if (plate && !storable) notes.push(`Plate: ${plate} (not stored as a plate: 1-20 letters/digits only)`);
+      if (entry && plate && !storable) entry.decisions.push({ plate: 'too long or invalid; kept in notes' });
+      for (const [name, value] of extras) notes.push(`${name}: ${value}`);
+      if (timeNote) notes.push(`[${timeNote}]`);
+
+      const photos = [];
+      const [mediaPaths, skippedMedia] = pickMedia(fields.media);
+      if (!mediaIndex) {
+        if (mediaPaths.length) notes.push('Legacy media (not imported): ' + mediaPaths.join(', '));
+      } else {
+        const stamp = new Date(whenMs).toISOString().replace(/[-:]/g, '').slice(0, 15);
+        for (let n = 1; n <= mediaPaths.length; n++) {
+          const rel = mediaPaths[n - 1]; const file = findMedia(mediaIndex, rel); let reason = null;
+          if (!file) reason = 'file not found in the media folder';
+          else {
+            const dest = `photos/${key}_${stamp}_${String(n).padStart(3, '0')}.jpg`;
+            try { files.set(dest, await convertPhoto(file)); photos.push(dest); counts.photos++; photoCount++; }
+            catch (e) { reason = `could not convert: ${e.message || e}`; }
+          }
+          if (reason) { report.media_not_imported.push({ alert_token: token, path: rel, reason }); notes.push(`Media not imported: ${rel} (${reason})`); }
+        }
+      }
+      for (const rel of skippedMedia) report.media_not_imported.push({ alert_token: token, path: rel, reason: 'not an image' });
+
+      const location = fields.address ? await geocoder.locate(fields.address) : null;
+      if (location) { counts.located++; located++; }
+      if (entry) {
+        entry.decisions.push({ address: { raw: fields.address ?? null, location, lookup_query: fields.address ? geocoder.queryFor(fields.address) : null } });
+        entry.decisions.push({ media: { raw: fields.media ?? null, photos, legacy_paths: mediaPaths } });
+      }
+      sightings.set(sid, { id: sid, timestamp: isoOf(whenMs), location, photos, flag, notes: notes.length ? notes.join('\n') : null, source: `${XML_TAG}:${token}`, observer: XML_TAG });
+      const ts = isoOf(whenMs);
+      if (!newest || ts >= newest[0]) newest = [ts, fields];
+    }
+
+    const [color, make, model] = parseMake(newest[1].vehicle_make);
+    for (const it of items) if (it[5]) it[5].decisions.push({ vehicle: { raw: newest[1].vehicle_make ?? null, color, make, model, bodyStyle: guessBodyStyle(model) } });
+    const incoming = {
+      vehicleKey: key,
+      displayName: [pyTitle(color), make, model].filter(Boolean).join(' '),
+      color, make, model, bodyStyle: guessBodyStyle(model),
+      distinguishing: [UNKNOWN], distinguishingNotes: null,
+      plateAliases: storable && !keepPlates ? [`${stateCode}-${plate}`] : [], possibleDuplicate: false, lastUpdatedBy: XML_TAG
+    };
+    const existing = vehiclesMem[key] || null;
+    const vehicle = mergeWithExisting(existing, incoming, Array.from(sightings.values()));
+    if (existing && existing.flag !== vehicle.flag) report.flag_changed.push({ vehicle: key, from: existing.flag, to: vehicle.flag, because: 'newer sighting than any already recorded' });
+    vehiclesMem[key] = vehicle;
+    for (const sg of sightings.values()) report.new_records.push({ alert_token: sg.source.split(':').slice(1).join(':'), vehicle: key, plate: plate ? `${stateCode}-${plate}` : null, timestamp: sg.timestamp, new_vehicle: !existing });
+    for (const sg of sightings.values()) report.records.push({ alert_token: sg.source.split(':').slice(1).join(':'), result: 'new', vehicle: key, plate: plate ? `${stateCode}-${plate}` : null, timestamp: sg.timestamp, located: !!sg.location });
+    counts.vehicles++; counts.sightings += sightings.size;
+    vehicles[key] = vehicle;
+    files.set(`data/vehicles/${key}.json`, dump(vehicle));
+
+    if (storable && !keepPlates) {
+      const plateName = `${stateCode}-${plate}`;
+      const current = existingPlates[plateName];
+      if (current && current.currentVehicleKey && current.currentVehicleKey !== key) {
+        report.plate_conflicts.push({ plate: plateName, existing_vehicle: current.currentVehicleKey, imported_vehicle: key, action: 'kept existing plate record; imported vehicle still lists the plate as an alias' });
+      } else {
+        const record = { plate, plateState: stateCode, plateType: (current && current.currentVehicleKey === key && current.plateType) || 'standard', currentVehicleKey: key, firstSeen: vehicle.firstSeen, updated: vehicle.lastSeen };
+        plates[plateName] = record; counts.plates++;
+        files.set(`data/plates/${plateName}.json`, dump(record));
+      }
+    }
+    summary.push({ key, name: vehicle.displayName, plate: storable ? `${stateCode}-${plate}` : (plate ? plate + ' (not stored)' : ''), sightings: sightings.size, located, photos: photoCount });
+    done++;
+    if (done % 25 === 0) { onStatus(`Converted ${done} of ${identities.length} vehicles…`); await sleep(0); }
+  }
+
+  if (existingVehicles) {
+    const all = { ...existingVehicles, ...vehicles };
+    const entries = Object.values(all).map(indexEntry).sort((a, b) => (a.vehicleKey < b.vehicleKey ? -1 : a.vehicleKey > b.vehicleKey ? 1 : 0));
+    files.set('data/index.json', dump(entries));
+  }
+  counts.records_read = rows.length;
+  {
+    const dated = report.records.filter((r) => r.timestamp && !r.timestamp.startsWith('1970')).map((r) => r.timestamp).sort();
+    const newDated = report.records.filter((r) => r.result === 'new' && r.timestamp && !r.timestamp.startsWith('1970')).map((r) => r.timestamp).sort();
+    const accounted = counts.sightings + counts.already_imported + counts.duplicates;
+    report.check = { records_read: rows.length, new: counts.sightings, already_imported: counts.already_imported, repeated_in_file: counts.duplicates,
+      accounted_for: accounted, complete: accounted === rows.length,
+      date_range: dated.length ? [dated[0], dated[dated.length - 1]] : null, new_date_range: newDated.length ? [newDated[0], newDated[newDated.length - 1]] : null,
+      no_date: report.records.filter((r) => r.timestamp && r.timestamp.startsWith('1970')).length,
+      with_location_new: report.records.filter((r) => r.result === 'new' && r.located).length,
+      without_location_new: report.records.filter((r) => r.result === 'new' && !r.located).length };
+  }
+  report.counts = counts; report.geocoding = geocoder.stats;
+  return { files, report, counts, vehicles: summary };
+}
+
+// ---------- zip (store only, no compression: JSON is small and JPEGs do not shrink) ----------
+
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+
+function makeZip(files, now = new Date()) {
+  const enc = new TextEncoder(); const parts = []; const central = []; let offset = 0;
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosDate = (Math.max(0, now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  for (const path of Array.from(files.keys()).sort()) {
+    const data = typeof files.get(path) === 'string' ? enc.encode(files.get(path)) : files.get(path);
+    const name = enc.encode(path); const crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true); local.setUint16(8, 0, true);
+    local.setUint16(10, dosTime, true); local.setUint16(12, dosDate, true); local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, name.length, true); local.setUint16(28, 0, true);
+    parts.push(new Uint8Array(local.buffer), name, data);
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true); cd.setUint16(10, 0, true);
+    cd.setUint16(12, dosTime, true); cd.setUint16(14, dosDate, true); cd.setUint32(16, crc, true);
+    cd.setUint32(20, data.length, true); cd.setUint32(24, data.length, true); cd.setUint16(28, name.length, true);
+    cd.setUint32(42, offset, true);
+    central.push(new Uint8Array(cd.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((n, p) => n + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.size, true); end.setUint16(10, files.size, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+
+
+
+// ====================================================================================
+// CSV-specific core. Everything above this line (state parsing, make/model parsing,
+// merge and plate-owner logic, geocoding, ZIP) is shared with the XML engine and comes from
+// the XML importer's core (above, same file) so both sources write identical records.
+// The shared code exists once; the XML side is checked byte-for-byte against the
+// Python importer by tests/e2e_xml_tool.py.
+// ====================================================================================
+
+const CSV_TAG = 'csv-import';
+const FLAGS = ['unknown', 'suspected', 'confirmed', 'cleared', 'pigs'];
+const BODY_SYNONYMS = {
+  sedan: 'sedan', suv: 'suv', crossover: 'suv', cuv: 'suv', 'sport utility': 'suv', truck: 'truck', pickup: 'truck', 'pick up': 'truck',
+  'pickup truck': 'truck', van: 'van', minivan: 'van', 'mini van': 'van', 'cargo van': 'van', coupe: 'coupe', hatchback: 'hatchback', hatch: 'hatchback'
+};
+
+/** [target id, label shown in the column list]. "ignore" and "note_labeled" may be used by many columns. */
+const TARGETS = [
+  ['plate', 'Plate'], ['state', 'Plate state'], ['color', 'Color'], ['make', 'Make'], ['model', 'Model'],
+  ['vehicle', 'Color, make and model in one column'], ['body', 'Body type (sedan, SUV, truck, van…)'], ['year', 'Model year'],
+  ['first', 'Earliest seen (date)'], ['last', 'Last seen (date)'], ['date', 'Date seen (one date)'],
+  ['address', 'Address (looked up on the map)'], ['lat', 'Latitude'], ['lng', 'Longitude'],
+  ['flag', 'Flag'], ['notes', 'Notes'], ['note_labeled', 'Add to notes, with the column name'], ['ignore', 'Ignore this column']
+];
+const MANY_OK = new Set(['notes', 'note_labeled', 'ignore']);
+const HEADER_ALIASES = {
+  plate: ['licenseplate', 'plate', 'plateno', 'platenumber', 'plates', 'license', 'licenseno', 'licensenumber', 'lic', 'tag', 'vehiclelicense', 'vehicleplate'],
+  state: ['state', 'platestate', 'licensestate', 'licstate', 'st', 'province', 'issuingstate', 'registrationstate'],
+  color: ['color', 'colour', 'vehiclecolor'],
+  make: ['make', 'vehiclemake', 'manufacturer'],
+  model: ['model', 'vehiclemodel'],
+  vehicle: ['vehicle', 'vehicledescription', 'car'],
+  body: ['type', 'bodytype', 'bodystyle', 'style', 'vehicletype'],
+  year: ['year', 'modelyear', 'vehicleyear'],
+  first: ['earliestseen', 'firstseen', 'first', 'datefirstseen', 'firstsighting', 'earliest', 'firstdate'],
+  last: ['lastseen', 'latestseen', 'last', 'datelastseen', 'lastsighting', 'latest', 'mostrecent', 'lastdate'],
+  date: ['date', 'seen', 'dateseen', 'datestamp', 'timestamp', 'datetime', 'sightingdate', 'whenseen', 'sighted'],
+  address: ['address', 'streetaddress', 'street', 'location', 'locationtext', 'where'],
+  lat: ['lat', 'latitude'],
+  lng: ['lng', 'lon', 'long', 'longitude'],
+  flag: ['flag', 'status'],
+  notes: ['notes', 'note', 'comments', 'comment', 'remarks']
+};
+const normHeader = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** One target per column. Unrecognised headings become "add to notes" so nothing is lost. */
+function guessMapping(headers) {
+  const taken = new Set();
+  return headers.map((h) => {
+    const n = normHeader(h);
+    if (!n) return 'ignore';
+    for (const [target, aliases] of Object.entries(HEADER_ALIASES)) {
+      if (aliases.includes(n) && (MANY_OK.has(target) || !taken.has(target))) { taken.add(target); return target; }
+    }
+    return 'note_labeled';
+  });
+}
+
+// ---------- reading the CSV ----------
+
+function decodeBytes(bytes, info = {}) {
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) { info.encoding = 'UTF-16 LE'; return new TextDecoder('utf-16le').decode(bytes.subarray(2)); }
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) { info.encoding = 'UTF-16 BE'; return new TextDecoder('utf-16be').decode(bytes.subarray(2)); }
+  try { info.encoding = 'UTF-8'; return new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^﻿/, ''); }
+  catch { info.encoding = 'Windows-1252 (not valid UTF-8; common for CSV saved by older Excel)'; return new TextDecoder('windows-1252').decode(bytes); }
+}
+
+function detectDelimiter(text) {
+  let first = ''; let q = false;
+  for (const ch of text) { if (ch === '"') q = !q; else if (!q && (ch === '\n' || ch === '\r')) { if (first.trim()) break; first = ''; continue; } first += ch; }
+  const count = (d) => { let n = 0, inQ = false; for (const ch of first) { if (ch === '"') inQ = !inQ; else if (!inQ && ch === d) n++; } return n; };
+  const best = [',', ';', '\t'].map((d) => [d, count(d)]).sort((a, b) => b[1] - a[1])[0];
+  return best[1] > 0 ? best[0] : ',';
+}
+
+/** RFC 4180: quotes, doubled quotes, line breaks inside quotes. Blank lines are dropped. Returns { rows: [{cells, line}], delimiter, unclosedQuote, blank }. */
+function parseCsv(text, delimiter = null) {
+  text = String(text).replace(/^﻿/, '');
+  const delim = delimiter || detectDelimiter(text);
+  const rows = []; let row = [], cell = '', q = false, line = 1, rowLine = 1, blank = 0, quoteLine = 0, wasQuoted = false;
+  const flush = () => {
+    row.push(cell);
+    if (row.length === 1 && row[0].trim() === '' && !wasQuoted) blank++;
+    else if (row.every((c) => c.trim() === '')) blank++;
+    else rows.push({ cells: row, line: rowLine });
+    row = []; cell = ''; wasQuoted = false;
+  };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else { if (ch === '\n') line++; cell += ch; }
+    } else if (ch === '"' && cell === '') { q = true; wasQuoted = true; quoteLine = line; }
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      flush(); line++; rowLine = line;
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) flush();
+  return { rows, delimiter: delim, unclosedQuote: q ? quoteLine : 0, blank };
+}
+
+// ---------- dates ----------
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const twoDigitYear = (yy) => (yy < 70 ? 2000 + yy : 1900 + yy);
+const localDateOf = (ms, offsetHours) => new Date(ms + offsetHours * 3600000).toISOString().slice(0, 10);
+
+/**
+ * order: 'mdy' | 'dmy'. Returns { empty:true } | { bad:true } | { ms, stamp, local, timeGiven }.
+ * stamp is the date (and time, if the cell had one) as written, so a sighting's identity does not depend on the time zone chosen.
+ */
+function parseCsvDate(text, order, offsetHours) {
+  const raw = String(text == null ? '' : text).trim();
+  if (!raw) return { empty: true };
+  let s = raw, hh = null, mi = 0, ss = 0, off = offsetHours;
+  const tm = /^(.*?)[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*([AaPp])?\.?[Mm]?\.?\s*(Z|[+-]\d{2}:?\d{2})?$/.exec(s);
+  if (tm && tm[1].trim()) {
+    s = tm[1].trim(); hh = +tm[2]; mi = +tm[3]; ss = +(tm[4] || 0);
+    if (tm[5]) { const pm = tm[5].toLowerCase() === 'p'; if (hh < 1 || hh > 12) return { bad: true }; if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
+    if (tm[6]) {
+      if (tm[6] === 'Z') off = 0;
+      else { const sign = tm[6][0] === '-' ? -1 : 1; const digits = tm[6].slice(1).replace(':', ''); off = sign * (+digits.slice(0, 2) + +digits.slice(2) / 60); }
+    }
+  }
+  let y, mo, d, m;
+  if ((m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(s))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+  else if ((m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})$/.exec(s))) {
+    const a = +m[1], b = +m[2]; y = m[3].length === 2 ? twoDigitYear(+m[3]) : +m[3];
+    if (order === 'dmy') { d = a; mo = b; } else { mo = a; d = b; }
+  } else if ((m = /^([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4}|\d{2})$/.exec(s)) && monthNumber(m[1])) { mo = monthNumber(m[1]); d = +m[2]; y = m[3].length === 2 ? twoDigitYear(+m[3]) : +m[3]; }
+  else if ((m = /^(\d{1,2})(?:st|nd|rd|th)?[\s-]+([A-Za-z]{3,9})\.?,?[\s-]+(\d{4}|\d{2})$/.exec(s)) && monthNumber(m[2])) { d = +m[1]; mo = monthNumber(m[2]); y = m[3].length === 2 ? twoDigitYear(+m[3]) : +m[3]; }
+  else if (hh === null && /^\d{5}(?:\.\d+)?$/.test(s) && +s >= 20000 && +s <= 80000) { // Excel serial date
+    const ms = Date.UTC(1899, 11, 30) + Math.round(+s * 86400000);
+    return { ms, stamp: new Date(ms).toISOString().slice(0, /\./.test(s) ? 16 : 10), local: new Date(ms).toISOString().slice(0, 10), timeGiven: /\./.test(s) };
+  } else if (hh === null && /^\d{9,13}$/.test(s)) { // epoch seconds or milliseconds
+    const ms = s.length > 10 ? +s : +s * 1000;
+    if (!Number.isFinite(ms)) return { bad: true };
+    return { ms, stamp: new Date(ms).toISOString().slice(0, 16), local: localDateOf(ms, offsetHours), timeGiven: true };
+  } else return { bad: true };
+  const ms = utcMs(y, mo, d, hh === null ? 12 : hh, mi, ss, off);
+  if (ms === null) return { bad: true };
+  const day = `${y}-${pad2(mo)}-${pad2(d)}`;
+  return { ms, stamp: hh === null ? day : `${day}T${pad2(hh)}:${pad2(mi)}`, local: day, timeGiven: hh !== null };
+}
+
+/** Looks at every date written like 01/08/26 in the date columns to decide month-first or day-first. */
+function detectDateOrder(rows, map) {
+  const cols = map.map((t, i) => (['first', 'last', 'date'].includes(t) ? i : -1)).filter((i) => i >= 0);
+  let dayFirst = 0, monthFirst = 0, ambiguous = 0;
+  for (const r of rows) for (const i of cols) {
+    const m = /^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})/.exec(String(r.cells[i] == null ? '' : r.cells[i]));
+    if (!m) continue;
+    const a = +m[1], b = +m[2];
+    if (a > 12 && b <= 12) dayFirst++; else if (b > 12 && a <= 12) monthFirst++; else if (a <= 12 && b <= 12 && a !== b) ambiguous++;
+  }
+  if (dayFirst && monthFirst) return { order: 'mdy', why: 'mixed', dayFirst, monthFirst, ambiguous };
+  if (dayFirst) return { order: 'dmy', why: 'day-first', dayFirst, monthFirst, ambiguous };
+  if (monthFirst) return { order: 'mdy', why: 'month-first', dayFirst, monthFirst, ambiguous };
+  return { order: 'mdy', why: ambiguous ? 'ambiguous' : 'none', dayFirst, monthFirst, ambiguous };
+}
+
+// ---------- one row -> one item ----------
+
+const stripSpaces = (s) => String(s == null ? '' : s).replace(/[ \s]+/g, ' ').trim();
+const multiline = (s) => String(s == null ? '' : s).replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/[\u00a0\s]+/g, ' ').trim()).filter(Boolean).join('\n');
+const fixCase = (x) => ((isUpper(x) || isLower(x)) ? pyTitle(x) : x);
+
+/**
+ * cells: the row; map: target per column; o: { headers, order, offsetHours, defaultState, flag, coarsen }.
+ * Never throws: anything it cannot read is kept in the notes and listed in `issues`.
+ */
+function interpretRow(cells, map, o) {
+  // notes keep their line breaks; every other field is one line
+  const cell = (i) => (map[i] === 'notes' || map[i] === 'note_labeled' ? multiline(cells[i]) : stripSpaces(cells[i]));
+  const head = (i) => stripSpaces((o.headers || [])[i]) || `Column ${i + 1}`;
+  const firstOf = (t) => { for (let i = 0; i < map.length; i++) if (map[i] === t && cell(i)) return [i, cell(i)]; return [-1, '']; };
+  const allOf = (t) => { const out = []; for (let i = 0; i < map.length; i++) if (map[i] === t && cell(i)) out.push([i, cell(i)]); return out; };
+  const issues = []; const issueNotes = [];
+
+  const notesText = allOf('notes').map(([, v]) => v).join('\n');
+  const [, address] = firstOf('address');
+  const labeled = allOf('note_labeled');
+
+  // plate and state
+  const [, plateRaw] = firstOf('plate');
+  const plate = normalizePlate(plateRaw);
+  let [, stateCell] = firstOf('state');
+  if (/^(xx|unknown|\?+|n\/?a|none|-+)$/i.test(stateCell)) stateCell = '';
+  const state = plate
+    ? resolveState({ vehicle_state: stateCell, comments: notesText, address }, labeled.map(([i, v]) => [head(i), v]), o.defaultState)
+    : { code: UNKNOWN_STATE, source: 'no plate', raw: null };
+  const storable = !!(plate && PLATE_RE.test(plate));
+  if (plate && state.source.includes('unrecognised')) { issues.push(`State "${state.raw}" not recognised; stored as XX`); issueNotes.push(`State: ${state.raw} (not recognised)`); }
+  if (plate && !storable) { issues.push(`Plate ${plate} is not 1 to 20 letters/digits; kept in the notes only`); issueNotes.push(`Plate: ${plate} (not stored as a plate: 1-20 letters/digits only)`); }
+
+  // vehicle
+  let color = UNKNOWN, make = 'Unknown', model = null;
+  const [, vehicleText] = firstOf('vehicle');
+  if (vehicleText) [color, make, model] = parseMake(vehicleText);
+  const [, c] = firstOf('color'); if (c) color = c.toLowerCase().replace(/gray/g, 'grey');
+  const [, mk] = firstOf('make'); if (mk) make = fixCase(mk);
+  const [, md] = firstOf('model'); if (md) model = md;
+  let bodyStyle;
+  const [bi, bt] = firstOf('body');
+  if (bt) {
+    const k = bt.toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+    bodyStyle = BODY_SYNONYMS[k] || BODY_SYNONYMS[k.replace(/ /g, '')] || null;
+    if (!bodyStyle) { issues.push(`Body type "${bt}" not recognised; guessed from the model`); issueNotes.push(`${head(bi)}: ${bt} (body type not recognised)`); bodyStyle = guessBodyStyle(model); }
+  } else bodyStyle = guessBodyStyle(model);
+  let year = null;
+  const [yi, yt] = firstOf('year');
+  if (yt) { if (/^\d{4}$/.test(yt) && +yt >= 1900 && +yt <= 2100) year = +yt; else { issues.push(`Year "${yt}" not understood`); issueNotes.push(`${head(yi)}: ${yt} (not a valid year)`); } }
+
+  // flag
+  let flag = o.flag || 'confirmed';
+  const [fi, ft] = firstOf('flag');
+  if (ft) { const f = ft.toLowerCase(); if (FLAGS.includes(f)) flag = f; else { issues.push(`Flag "${ft}" not recognised; used ${flag}`); issueNotes.push(`${head(fi)}: ${ft} (flag not recognised)`); } }
+
+  // dates: earliest / last / single, each becoming a sighting
+  const times = []; let timeAssumed = false;
+  for (const t of ['first', 'last', 'date']) {
+    const [di, dv] = firstOf(t);
+    if (!dv) continue;
+    const r = parseCsvDate(dv, o.order, o.offsetHours);
+    if (r.bad) { issues.push(`${head(di)} "${dv}" is not a date I understand`); issueNotes.push(`${head(di)}: ${dv} (date not understood)`); continue; }
+    if (!r.timeGiven) timeAssumed = true;
+    if (!times.some((x) => x.stamp === r.stamp)) times.push(r);
+  }
+  times.sort((a, b) => a.ms - b.ms);
+  let dateUnknown = false;
+  if (!times.length) { dateUnknown = true; issues.push('No usable date; set to 1970-01-01'); times.push({ ms: 0, stamp: '1970-01-01', local: '1970-01-01', timeGiven: false }); }
+
+  // location
+  let location = null;
+  const [lai, la] = firstOf('lat'); const [lni, ln] = firstOf('lng');
+  if (la || ln) {
+    const lat = parseFloat(la), lng = parseFloat(ln);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0)) {
+      location = o.coarsen === null || o.coarsen === undefined ? { lat, lng } : { lat: Number(lat.toFixed(o.coarsen)), lng: Number(lng.toFixed(o.coarsen)) };
+    } else { issues.push('Latitude/longitude not usable'); issueNotes.push(`Location: ${la || '?'}, ${ln || '?'} (not a usable coordinate)`); }
+  }
+
+  const noteLines = [];
+  if (notesText) noteLines.push(notesText);
+  if (address) noteLines.push(`Address: ${address}`);
+  for (const [i, v] of labeled) noteLines.push(`${head(i)}: ${v}`);
+  noteLines.push(...issueNotes);
+
+  const rowHash = digest('csvrow:' + JSON.stringify([plateRaw, vehicleText, color, make, model, notesText, address, times.map((t) => t.stamp), labeled.map(([, v]) => v)]));
+  return { plate, storable, plateRaw, state, color, make, model, bodyStyle, year, flag, times, timeAssumed, dateUnknown, location, address, noteLines, issues, rowHash,
+    vehicleText, identity: plate ? `plate:${state.code}-${plate}` : `noplate:${rowHash}` };
+}
+
+// ---------- build records ----------
+
+const isUnknownValue = (x) => x === null || x === undefined || x === '' || String(x).toLowerCase() === 'unknown';
+const autoName = (v) => [pyTitle(v.color || UNKNOWN), v.make, v.model].filter(Boolean).join(' ');
+/** Details an existing vehicle still has as unknown that the CSV row knows. Values that are already known are never replaced. */
+function fillPlan(existing, item) {
+  const plan = {};
+  if (isUnknownValue(existing.color) && item.color !== UNKNOWN) plan.color = item.color;
+  if (isUnknownValue(existing.make) && item.make !== 'Unknown') plan.make = item.make;
+  if (isUnknownValue(existing.model) && item.model) plan.model = item.model;
+  if (isUnknownValue(existing.bodyStyle) && item.bodyStyle !== UNKNOWN) plan.bodyStyle = item.bodyStyle;
+  if ((existing.year === null || existing.year === undefined) && item.year !== null) plan.year = item.year;
+  return plan;
+}
+
+/**
+ * rows: [{ item, line }] where item comes from interpretRow.
+ * options: { geocoder, existingVehicles|null, existingPlates, offsetHours, skipSameDay, onStatus }
+ * Returns { files: Map(path -> string), report, counts, vehicles }
+ */
+async function buildCsv(rows, options) {
+  const { geocoder, existingVehicles = null, existingPlates = {}, offsetHours = 0, skipSameDay = true, fillUnknown = true, onStatus = () => {} } = options;
+  const report = { files: [], files_failed: [], needs_review: [], assumptions: [], duplicate_records: [], plate_conflicts: [], plates_not_storable: {}, already_imported: [], redirected: [], flag_changed: [], new_records: [], records: [], row_issues: [], filled_in: [], state_to_set: [] };
+  const files = new Map();
+  const states = report.states = { by_source: {}, by_code: {}, unrecognised: {}, plates_without_state: 0 };
+  const bump = (obj, k) => { obj[k] = (obj[k] || 0) + 1; };
+  const groups = new Map();
+
+  for (const { item, line } of rows) {
+    item.line = line;
+    for (const issue of item.issues) report.row_issues.push({ line, issue });
+    if (item.plate) {
+      bump(states.by_source, item.state.source); bump(states.by_code, item.state.code);
+      if (item.state.code === UNKNOWN_STATE) states.plates_without_state++;
+      if (item.state.source.includes('unrecognised')) bump(states.unrecognised, item.state.raw);
+    }
+    if (item.plate && !item.storable) (report.plates_not_storable[item.plate] = report.plates_not_storable[item.plate] || []).push(line);
+    if (item.dateUnknown) report.needs_review.push({ line, why: 'date unknown; set to 1970-01-01' });
+    if (!groups.has(item.identity)) groups.set(item.identity, []);
+    groups.get(item.identity).push(item);
+  }
+  const byPlate = {};
+  for (const identity of groups.keys()) {
+    if (!identity.startsWith('plate:')) continue;
+    const rest = identity.slice(6); const i = rest.indexOf('-');
+    (byPlate[rest.slice(i + 1)] = byPlate[rest.slice(i + 1)] || new Set()).add(rest.slice(0, i));
+  }
+  report.state_ambiguous = Object.keys(byPlate).sort().filter((p) => byPlate[p].has(UNKNOWN_STATE) && byPlate[p].size > 1).map((p) => ({ plate: p, states: Array.from(byPlate[p]).sort() }));
+  if (rows.some(({ item }) => item.timeAssumed)) {
+    const n = rows.filter(({ item }) => item.timeAssumed).length;
+    report.assumptions.push({ note: `${n} row(s) have a date with no time of day; each sighting is set to 12:00 in the chosen time zone` });
+  }
+
+  const sightingsRead = rows.reduce((n, { item }) => n + item.times.length, 0);
+  const counts = { rows_read: rows.length, sightings_read: sightingsRead, vehicles: 0, sightings: 0, plates: 0, located: 0, duplicates: 0, already_imported: 0, same_date_skipped: 0 };
+  const vehicles = {}; const plates = {}; const summary = [];
+  const vehiclesMem = { ...(existingVehicles || {}) }; const platesMem = { ...existingPlates };
+  const known = new Map();
+  for (const [vk, v] of Object.entries(vehiclesMem)) for (const s of v.sightings || []) { known.set(s.id, vk); if (s.source) known.set(s.source, vk); }
+  const identities = Array.from(groups.keys()).sort();
+  let done = 0;
+  const noStateHolders = new Map(); // plate text -> vehicles that hold it as XX-<plate> (the XML export had no state)
+  for (const [vk, v] of Object.entries(vehiclesMem)) for (const a of v.plateAliases || []) if (a.startsWith(UNKNOWN_STATE + '-')) { const t = a.slice(3); (noStateHolders.get(t) || noStateHolders.set(t, []).get(t)).push(vk); }
+
+  for (const identity of identities) {
+    const items = groups.get(identity);
+    const plate = items[0].plate; const stateCode = items[0].state.code; const storable = items[0].storable;
+    const baseKey = `VEH_${digest('csv:' + identity)}`;
+    let [key, how] = findTarget(identity, baseKey, plate, stateCode, vehiclesMem, platesMem);
+    // The data has this plate with no state (XX) and the CSV knows the state: join that vehicle instead of creating a second one.
+    let stateToSet = null;
+    if (!how && !vehiclesMem[key] && storable && stateCode !== UNKNOWN_STATE) {
+      const owners = (noStateHolders.get(plate) || []).filter((k) => vehiclesMem[k]);
+      if (owners.length === 1) { key = owners[0]; how = 'plate on file without a state (XX); the CSV gives ' + stateCode; stateToSet = { plate, state_in_csv: stateCode, vehicle: key }; }
+    }
+    const existing = vehiclesMem[key] || null;
+    const sameDays = new Set(existing ? (existing.sightings || []).map((s) => localDateOf(Date.parse(s.timestamp), offsetHours)) : []);
+    const keepPlates = !!how || (!!existing && !(existing.plateAliases || []).includes(`${stateCode}-${plate}`));
+    const fresh = new Map(); const contributing = new Set();
+    const logRecord = (item, t, result, extra = {}) => report.records.push({ line: item.line, plate: plate ? `${stateCode}-${plate}` : null, timestamp: t.ms === 0 ? '1970-01-01T00:00:00.000Z' : isoOf(t.ms), result, vehicle: key, located: null, ...extra });
+
+    for (const item of items) {
+      for (const t of item.times) {
+        const token = `${plate || 'np-' + item.rowHash}@${t.stamp}`;
+        let sid = `S_${digest('csv:' + token)}`;
+        let owner = known.get(sid) || known.get(`${CSV_TAG}:${token}`);
+        // the same plate text in another state is another vehicle: do not mistake it for an earlier import
+        if (owner && owner !== key && plate && vehiclesMem[owner] && !(vehiclesMem[owner].plateAliases || []).some((a) => a.endsWith('-' + plate))) { sid = `S_${digest('csv:' + token + '#' + stateCode)}`; owner = known.get(sid); }
+        if (owner) { counts.already_imported++; report.already_imported.push(`${item.line}`); logRecord(item, t, 'already imported', { vehicle: owner, reason: 'this sighting is already in the data' }); continue; }
+        if (fresh.has(sid)) {
+          counts.duplicates++; report.duplicate_records.push(`${item.line}`);
+          const prior = fresh.get(sid);
+          for (const ln of item.noteLines) if (!prior.noteLines.includes(ln)) prior.noteLines.push(ln);
+          logRecord(item, t, 'repeated in this file', { reason: 'same plate and date as an earlier row; notes merged' });
+          continue;
+        }
+        if (skipSameDay && t.ms !== 0 && sameDays.has(t.local)) {
+          counts.already_imported++; counts.same_date_skipped++; report.already_imported.push(`${item.line}`);
+          logRecord(item, t, 'already imported', { reason: 'the vehicle already has a sighting on this date' });
+          continue;
+        }
+        fresh.set(sid, { item, t, noteLines: [...item.noteLines, ...(stateToSet ? [`State: ${stateCode} (from the CSV; the plate on file has no state, set it in the data tool)`] : [])], sighting: { id: sid, timestamp: t.ms === 0 ? '1970-01-01T00:00:00.000Z' : isoOf(t.ms), location: null, photos: [], flag: item.flag, notes: null, source: `${CSV_TAG}:${token}`, observer: CSV_TAG } });
+        contributing.add(item);
+      }
+    }
+    let detail = null;
+    for (const item of items) { const last = item.times[item.times.length - 1].ms; if (!detail || last >= detail.ms) detail = { ms: last, item }; }
+    const fill = existing && fillUnknown ? fillPlan(existing, detail.item) : {};
+    if (!fresh.size && !Object.keys(fill).length) continue;
+    if (how) report.redirected.push({ identity, joined_vehicle: key, because: how });
+
+    let located = 0;
+    for (const f of fresh.values()) {
+      const { item, sighting } = f;
+      let loc = item.location;
+      if (!loc && item.address) loc = await geocoder.locate(item.address);
+      sighting.location = loc || null;
+      if (loc) { counts.located++; located++; }
+      sighting.notes = f.noteLines.length ? f.noteLines.join('\n') : null;
+      logRecord(item, f.t, 'new', { located: !!loc });
+      report.new_records.push({ line: item.line, vehicle: key, plate: plate ? `${stateCode}-${plate}` : null, timestamp: sighting.timestamp, new_vehicle: !existing });
+    }
+    const sightings = Array.from(fresh.values()).map((f) => f.sighting);
+    let newest = null;
+    for (const item of contributing) { const last = item.times[item.times.length - 1].ms; if (!newest || last >= newest.ms) newest = { ms: last, item }; }
+    const v = (newest || detail).item;
+    const incoming = {
+      vehicleKey: key, displayName: [pyTitle(v.color), v.make, v.model].filter(Boolean).join(' '),
+      color: v.color, make: v.make, model: v.model, bodyStyle: v.bodyStyle,
+      distinguishing: [UNKNOWN], distinguishingNotes: null,
+      plateAliases: storable && !keepPlates ? [`${stateCode}-${plate}`] : [], possibleDuplicate: false, lastUpdatedBy: CSV_TAG
+    };
+    if (v.year !== null) incoming.year = v.year;
+    const vehicle = sightings.length ? mergeWithExisting(existing, incoming, sightings) : { ...existing };
+    if (Object.keys(fill).length) {
+      const wasAuto = existing.displayName === autoName(existing);
+      Object.assign(vehicle, fill);
+      if (wasAuto) vehicle.displayName = autoName(vehicle);
+      vehicle.lastUpdatedBy = CSV_TAG;
+      report.filled_in.push({ vehicle: key, plate: plate ? `${stateCode}-${plate}` : null, fields: Object.keys(fill), values: fill });
+    }
+    if (stateToSet && sightings.length) report.state_to_set.push(stateToSet);
+    if (existing && sightings.length && existing.flag !== vehicle.flag) report.flag_changed.push({ vehicle: key, from: existing.flag, to: vehicle.flag, because: 'newer sighting than any already recorded' });
+    vehiclesMem[key] = vehicle;
+    counts.vehicles++; counts.sightings += sightings.length;
+    vehicles[key] = vehicle;
+    files.set(`data/vehicles/${key}.json`, dump(vehicle));
+
+    if (storable && !keepPlates) {
+      const plateName = `${stateCode}-${plate}`;
+      const current = existingPlates[plateName];
+      if (current && current.currentVehicleKey && current.currentVehicleKey !== key) {
+        report.plate_conflicts.push({ plate: plateName, existing_vehicle: current.currentVehicleKey, imported_vehicle: key, action: 'kept existing plate record; imported vehicle still lists the plate as an alias' });
+      } else {
+        const record = { plate, plateState: stateCode, plateType: (current && current.currentVehicleKey === key && current.plateType) || 'standard', currentVehicleKey: key, firstSeen: vehicle.firstSeen, updated: vehicle.lastSeen };
+        plates[plateName] = record; counts.plates++;
+        files.set(`data/plates/${plateName}.json`, dump(record));
+      }
+    }
+    summary.push({ key, name: vehicle.displayName, plate: storable ? `${stateCode}-${plate}` : (plate ? plate + ' (not stored)' : ''), sightings: sightings.length, located, existing: !!existing });
+    done++;
+    if (done % 25 === 0) { onStatus(`Converted ${done} of ${identities.length} vehicles…`); await sleep(0); }
+  }
+
+  if (existingVehicles) {
+    const all = { ...existingVehicles, ...vehicles };
+    files.set('data/index.json', dump(Object.values(all).map(indexEntry).sort((a, b) => (a.vehicleKey < b.vehicleKey ? -1 : a.vehicleKey > b.vehicleKey ? 1 : 0))));
+  }
+  {
+    const dated = report.records.filter((r) => !r.timestamp.startsWith('1970')).map((r) => r.timestamp).sort();
+    const newDated = report.records.filter((r) => r.result === 'new' && !r.timestamp.startsWith('1970')).map((r) => r.timestamp).sort();
+    const accounted = counts.sightings + counts.already_imported + counts.duplicates;
+    report.check = { rows_read: rows.length, sightings_read: sightingsRead, new: counts.sightings, already_imported: counts.already_imported, same_date_skipped: counts.same_date_skipped, repeated_in_file: counts.duplicates,
+      accounted_for: accounted, complete: accounted === sightingsRead,
+      date_range: dated.length ? [dated[0], dated[dated.length - 1]] : null, new_date_range: newDated.length ? [newDated[0], newDated[newDated.length - 1]] : null,
+      no_date: report.records.filter((r) => r.timestamp.startsWith('1970')).length,
+      with_location_new: report.records.filter((r) => r.result === 'new' && r.located).length,
+      without_location_new: report.records.filter((r) => r.result === 'new' && !r.located).length };
+  }
+  report.counts = counts; report.geocoding = geocoder.stats;
+  return { files, report, counts, vehicles: summary };
+}
+
+// ---------- check the output against schema/ before anything is offered for download ----------
+
+const RE = {
+  vehicleKey: /^VEH_[0-9a-f]{8}$/, sightingId: /^S_[0-9a-f]{8}$/, alias: /^(?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]{1,20}$/, plate: /^[A-Z0-9]{1,20}$/, state: /^(?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})$/,
+  dateTime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/, photo: /^photos\/[A-Za-z0-9_.-]+\.jpg$/
+};
+const VEHICLE_KEYS = new Set(['vehicleKey', 'displayName', 'color', 'make', 'model', 'siteChecks', 'year', 'bodyStyle', 'distinguishing', 'distinguishingNotes', 'vin', 'plateAliases', 'flag', 'sightings', 'firstSeen', 'lastSeen', 'plateLookup', 'possibleDuplicate', 'lastUpdatedBy']);
+const SIGHTING_KEYS = new Set(['id', 'timestamp', 'location', 'photos', 'flag', 'notes', 'source', 'observer']);
+const PLATE_KEYS = new Set(['plate', 'plateState', 'plateType', 'currentVehicleKey', 'firstSeen', 'updated']);
+
+/** The same rules as schema/*.json. Returns a list of problems (empty = fine). */
+function validateFiles(files) {
+  const bad = [];
+  const str = (v) => typeof v === 'string';
+  for (const [path, text] of files) {
+    if (typeof text !== 'string' || !path.endsWith('.json') || path === 'data/index.json') continue;
+    let r; try { r = JSON.parse(text); } catch { bad.push(`${path}: not valid JSON`); continue; }
+    const where = (m) => bad.push(`${path}: ${m}`);
+    if (path.startsWith('data/vehicles/')) {
+      for (const k of Object.keys(r)) if (!VEHICLE_KEYS.has(k)) where(`unexpected field ${k}`);
+      for (const k of ['vehicleKey', 'displayName', 'color', 'make', 'bodyStyle', 'distinguishing', 'plateAliases', 'flag', 'sightings', 'firstSeen', 'lastSeen']) if (r[k] === undefined) where(`missing ${k}`);
+      if (!RE.vehicleKey.test(r.vehicleKey || '')) where('bad vehicleKey');
+      if (path !== `data/vehicles/${r.vehicleKey}.json`) where('file name does not match vehicleKey');
+      for (const k of ['displayName', 'color', 'make']) if (!str(r[k]) || !r[k]) where(`${k} must be text`);
+      if (r.model != null && !str(r.model)) where('model must be text or null');
+      if (r.year != null && !(Number.isInteger(r.year) && r.year >= 1900 && r.year <= 2100)) where('bad year');
+      if (!['sedan', 'suv', 'truck', 'van', 'coupe', 'hatchback', 'unknown'].includes(r.bodyStyle)) where('bad bodyStyle');
+      if (!Array.isArray(r.distinguishing) || r.distinguishing.some((x) => !str(x) || !x)) where('bad distinguishing');
+      if (!Array.isArray(r.plateAliases) || r.plateAliases.some((x) => !RE.alias.test(x) || !isValidState(splitKey(x)[0])) || new Set(r.plateAliases).size !== r.plateAliases.length) where('bad plateAliases');
+      if (!FLAGS.includes(r.flag)) where('bad flag');
+      if (!RE.dateTime.test(r.firstSeen || '') || !RE.dateTime.test(r.lastSeen || '')) where('bad firstSeen/lastSeen');
+      if (r.lastUpdatedBy != null && (!str(r.lastUpdatedBy) || r.lastUpdatedBy.length > 40)) where('bad lastUpdatedBy');
+      if (!Array.isArray(r.sightings) || !r.sightings.length) where('needs at least one sighting');
+      else {
+        const ids = new Set();
+        for (const s of r.sightings) {
+          for (const k of Object.keys(s)) if (!SIGHTING_KEYS.has(k)) where(`sighting has unexpected field ${k}`);
+          if (!RE.sightingId.test(s.id || '')) where('bad sighting id'); if (ids.has(s.id)) where('duplicate sighting id'); ids.add(s.id);
+          if (!RE.dateTime.test(s.timestamp || '')) where(`bad sighting timestamp ${s.timestamp}`);
+          if (!FLAGS.includes(s.flag)) where('bad sighting flag');
+          if (!Array.isArray(s.photos) || s.photos.some((p) => !RE.photo.test(p))) where('bad photos');
+          if (s.notes != null && !str(s.notes)) where('bad notes');
+          if (s.observer != null && (!str(s.observer) || s.observer.length > 40)) where('bad observer');
+          if (s.location != null && !(Number.isFinite(s.location.lat) && Number.isFinite(s.location.lng) && Math.abs(s.location.lat) <= 90 && Math.abs(s.location.lng) <= 180)) where('bad location');
+        }
+      }
+    } else if (path.startsWith('data/plates/')) {
+      for (const k of Object.keys(r)) if (!PLATE_KEYS.has(k)) where(`unexpected field ${k}`);
+      if (!RE.plate.test(r.plate || '')) where('bad plate');
+      if (!RE.state.test(r.plateState || '') || !isValidState(r.plateState)) where('bad plateState');
+      if (path !== `data/plates/${r.plateState}-${r.plate}.json`) where('file name does not match state and plate');
+      if (!['standard', 'dealer', 'temporary', 'vanity'].includes(r.plateType)) where('bad plateType');
+      if (!RE.vehicleKey.test(r.currentVehicleKey || '')) where('bad currentVehicleKey');
+      if (!RE.dateTime.test(r.firstSeen || '') || !RE.dateTime.test(r.updated || '')) where('bad firstSeen/updated');
+    }
+  }
+  return bad;
+}
+
+// ---------- template ----------
+
+const TEMPLATE_CSV = [
+  'License Plate,State,Color,Make,Model,Type,Earliest Seen,Last Seen,City,NOTES',
+  'DEMO001,CA,Silver,Ford,Explorer,,01/08/26,01/29/26,Exampleville,made-up example row',
+  'DEMO002,NV,White,Chrysler,Pacifica,Minivan,02/06/26,02/06/26,Exampleville,'
+].join('\r\n') + '\r\n';
+
+
+
+
+// ====================================================================================
+// UI: one page, two sources. `mode` is 'xml' or 'csv' and is set by the files added.
+// ====================================================================================
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const setStatus = (text) => { $('status').textContent = text; };
+const readText = (file) => file.text();
+let mode = null;        // null until a file is added, then 'xml' or 'csv'
+let xmlFiles = [];      // XML: File objects
+let parsedFiles = [];   // CSV: [{ file, name, parsed, encoding }]
+let table = null;       // CSV: { headers, rows: [{ cells, line, file }], problem }
+let mapping = [];       // CSV: what each column becomes
+let last = null;
+let repoRead = null;    // { files, promise } so choosing the folder and converting read it once
+
+const loadCache = () => { try { return JSON.parse(localStorage.getItem('pti-geocache-v1') || '{}'); } catch { return {}; } };
+const saveCache = (cache) => { try { localStorage.setItem('pti-geocache-v1', JSON.stringify(cache)); } catch { /* storage blocked */ } };
+
+(() => { // option lists
+  const sel = $('default-state');
+  for (const c of [UNKNOWN_STATE, ...Array.from(STATE_CODES).filter((x) => x !== UNKNOWN_STATE).sort()]) { const o = document.createElement('option'); o.value = c; o.textContent = c === UNKNOWN_STATE ? 'XX (unknown)' : c; sel.appendChild(o); }
+  const tz = $('csv-tz');
+  for (const [name, hours] of Object.entries(TZ_OFFSETS)) { const o = document.createElement('option'); o.value = name; o.textContent = `${name} (UTC${hours >= 0 ? '+' : ''}${hours})`; tz.appendChild(o); }
+  tz.value = 'PST';
+})();
+
+function setMode(next) {
+  mode = next;
+  document.querySelectorAll('.only-xml').forEach((e) => { e.hidden = mode !== 'xml'; });
+  document.querySelectorAll('.only-csv').forEach((e) => { e.hidden = mode !== 'csv'; });
+  $('download-records').textContent = mode === 'csv' ? 'Download sighting-by-sighting log (CSV)' : 'Download record-by-record log (CSV)';
+  $('results').hidden = true; last = null;
+}
+function resetFiles() {
+  xmlFiles = []; parsedFiles = []; table = null; mapping = [];
+  $('file-list').textContent = ''; $('file-status').textContent = '';
+  $('convert').disabled = true;
+  renderMapping(); renderPreview();
+}
+
+// ---------- step 1: adding files (XML or CSV, told apart by extension) ----------
+
+const kindOf = (f) => (/\.xml$/i.test(f.name) ? 'xml' : /\.(csv|tsv|txt)$/i.test(f.name) ? 'csv' : null);
+async function addFiles(list) {
+  const files = Array.from(list);
+  const kinds = new Set(files.map(kindOf).filter(Boolean));
+  const skippedOther = files.filter((f) => !kindOf(f)).length;
+  if (!kinds.size) { $('file-status').innerHTML = `<div class="note"><b class="bad">Only .xml and .csv files can be imported</b>${skippedOther ? ` (${skippedOther} file(s) skipped)` : ''}.</div>`; return; }
+  const kind = mode && kinds.has(mode) ? mode : kinds.values().next().value;
+  let message = '';
+  if (kind !== mode) {
+    if (mode) message = `<div class="note">Switched to ${kind.toUpperCase()}: the ${mode.toUpperCase()} files were removed from the list. One kind of file is imported at a time.</div>`;
+    resetFiles(); setMode(kind);
+  }
+  const mixed = kinds.size > 1;
+  if (kind === 'xml') { addXmlFiles(files.filter((f) => kindOf(f) === 'xml')); } else { await addCsvFiles(files.filter((f) => kindOf(f) === 'csv')); }
+  const extra = $('file-status').innerHTML;
+  $('file-status').innerHTML = message + (mixed ? `<div class="note">The list holds both XML and CSV files; only the ${kind.toUpperCase()} ones were added. Import the other kind separately.</div>` : '') + extra;
+}
+for (const id of ['xml-input', 'xml-folder', 'csv-input']) $(id).addEventListener('change', async (e) => { const files = Array.from(e.target.files); e.target.value = ''; await addFiles(files); }); // cleared so choosing the same file again still counts
+const drop = $('drop');
+['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+
+function addXmlFiles(list) {
+  for (const f of list) {
+    if (!xmlFiles.some((x) => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) xmlFiles.push(f);
+  }
+  const ul = $('file-list'); ul.textContent = '';
+  for (const f of xmlFiles) { const li = document.createElement('li'); li.textContent = `${f.webkitRelativePath || f.name} (${(f.size / 1024).toFixed(1)} KB)`; ul.appendChild(li); }
+  $('convert').disabled = xmlFiles.length === 0;
+}
+
+
+// ---------- step 2: existing data ----------
+
+async function readRepoData(fileList) {
+  const vehicles = {}, plates = {};
+  for (const f of Array.from(fileList)) {
+    const rel = (f.webkitRelativePath || '').replace(/\\/g, '/');
+    let m = rel.match(/(?:^|\/)data\/vehicles\/(VEH_[0-9a-f]{8})\.json$/) || rel.match(/^[^/]+\/vehicles\/(VEH_[0-9a-f]{8})\.json$/);
+    if (m) { try { vehicles[m[1]] = JSON.parse(await f.text()); } catch { /* skip unreadable */ } continue; }
+    m = rel.match(/(?:^|\/)data\/plates\/((?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]+)\.json$/) || rel.match(/^[^/]+\/plates\/((?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]+)\.json$/);
+    if (m) { try { plates[m[1]] = JSON.parse(await f.text()); } catch { /* skip unreadable */ } }
+  }
+  return { vehicles, plates };
+}
+function repoData() {
+  const files = $('repo-input').files;
+  if (!files.length) return null;
+  if (!repoRead || repoRead.files !== files) repoRead = { files, promise: readRepoData(files) };
+  return repoRead.promise;
+}
+$('repo-input').addEventListener('change', async () => {
+  const el = $('repo-status'); repoRead = null;
+  if (!$('repo-input').files.length) { el.textContent = ''; return; }
+  el.textContent = 'Reading the folder…';
+  const { vehicles, plates } = await repoData();
+  const v = Object.keys(vehicles).length; const p = Object.keys(plates).length;
+  if (!v) el.innerHTML = '<b class="bad">No vehicles found in that folder.</b> Choose the folder named <code>data</code> (it contains <code>vehicles</code> and <code>plates</code>). If this is the very first import, that is expected; otherwise choose again.';
+  else el.innerHTML = `<b class="good">Found ${v.toLocaleString()} vehicles and ${p.toLocaleString()} plates already in your data.</b>`;
+});
+
+// ---------- XML ----------
+
+function debugText(report) {
+  const d = report.debug; const out = []; const add = (t = '') => out.push(t);
+  add('XML IMPORT DEBUG REPORT'); add('='.repeat(60)); add('\nFILES');
+  for (const f of d.files) {
+    add(`  ${f.file}; ${f.bytes ?? '?'} bytes; ${f.lines ?? '?'} lines; encoding ${f.encoding_used ?? '?'} (declared ${f.encoding_declared || 'none'}); ${f.records ?? 0} records`);
+    if (f.failed) add(`    FAILED: ${f.failed}`);
+    if (f.first_error) add(`    strict parse error: ${f.first_error}`);
+    if (f.repaired) {
+      add(`    repaired ${f.repaired} character(s); first ${(f.repairs || []).length} listed:`);
+      for (const x of f.repairs || []) add(`      line ${x.line}, col ${x.column}: ${x.kind}  ...${x.context}...`);
+    }
+  }
+  const st = report.states || {};
+  add('\nPLATE STATE');
+  add(`  where the state came from: ${JSON.stringify(st.by_source || {})}`);
+  add(`  states found: ${JSON.stringify(st.by_code || {})}`);
+  add(`  plates left with unknown state (XX): ${st.plates_without_state || 0}`);
+  if (st.unrecognised && Object.keys(st.unrecognised).length) add(`  state values that are not a real state/province (became XX): ${JSON.stringify(st.unrecognised)}`);
+  for (const a of report.state_ambiguous || []) add(`  same plate with and without a state: ${a.plate} -> ${a.states.join(', ')}`);
+  add('\nXML ELEMENTS (all files; name: count)');
+  for (const [n, c] of Object.entries(d.elements).sort((a, b) => b[1] - a[1])) add(`  ${n}: ${c}`);
+  add('\nHOW EACH ELEMENT WAS USED (inside records)');
+  for (const [n, m] of Object.entries(d.field_map).sort((a, b) => b[1].count - a[1].count)) add(`  ${n.padEnd(24)} -> ${m.becomes.padEnd(34)} x${m.count} (${m.empty} empty)  e.g. ${JSON.stringify(m.examples)}`);
+  add('\nRECORD SHAPES (the set of elements a record has -> how many)');
+  for (const [shape, n] of Object.entries(d.record_shapes).sort((a, b) => b[1] - a[1])) add(`  x${n}: ${shape}`);
+  if (d.records) {
+    add('\nRECORDS');
+    for (const e of d.records) {
+      const src = e.source || {};
+      add(`  #${e.record} ${src.file || ''}:${src.line ?? '?'} token=${e.alert_token} group=${e.group}`);
+      add(`      plate ${JSON.stringify(e.plate.raw)} -> ${JSON.stringify(e.plate.normalized)} (storable=${e.plate.storable}); state ${e.state.code} from ${e.state.source}${e.state.raw ? ` [${JSON.stringify(e.state.raw)}]` : ''}; key ${e.plate_key}`);
+      add(`      vehicle ${e.vehicle_key} sighting ${e.sighting_id} identity ${e.identity}`);
+      for (const dec of e.decisions) for (const [k, v] of Object.entries(dec)) add(`      ${k}: ${JSON.stringify(v)}`);
+      if (e.extras.length) add(`      no field of its own (-> notes): ${JSON.stringify(e.extras)}`);
+      add(`      xml: ${(src.xml || '').slice(0, 300)}`);
+    }
+  }
+  return out.join('\n') + '\n';
+}
+
+function renderDebug(report, esc) {
+  const d = report.debug; const st = report.states || {};
+  const cell = (tr, v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); };
+  $('debug-files').innerHTML = d.files.map((f) => {
+    let t = `<div class="note"><b>${esc(f.file)}</b>: ${esc(f.bytes ?? '?')} bytes, ${esc(f.lines ?? '?')} lines, encoding ${esc(f.encoding_used ?? '?')} (declared ${esc(f.encoding_declared || 'none')}), ${esc(f.records ?? 0)} records`;
+    if (f.failed) t += `<br><b class="bad">Failed:</b> ${esc(f.failed)}`;
+    if (f.repaired) t += `<br>Not valid XML. First error: ${esc(f.first_error)}<br>Repaired ${f.repaired} character(s)${f.repairs.length < f.repaired ? ` (first ${f.repairs.length} shown)` : ''}:<ul>` +
+      f.repairs.slice(0, 20).map((x) => `<li>line ${x.line}, column ${x.column}: ${esc(x.kind)} … <code>${esc(x.context)}</code></li>`).join('') + (f.repairs.length > 20 ? `<li>…and ${f.repairs.length - 20} more (see the text download)</li>` : '') + '</ul>';
+    return t + '</div>';
+  }).join('');
+  const sources = Object.entries(st.by_source || {}).map(([k, v]) => `${esc(k)}: <b>${v}</b>`).join(' &nbsp; ') || 'no plates';
+  const codes = Object.entries(st.by_code || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)} ×${v}`).join(', ');
+  let html = `<p>Came from: ${sources}</p><p>States: ${codes || '-'}</p>`;
+  if (st.plates_without_state) html += `<div class="note"><b>${st.plates_without_state} plate record(s) have no state (XX).</b> Check "How each XML element was used" below: if the state lives in an element that is listed as <i>notes (no field of its own)</i>, tell me its name. You can also pick a state in Options for plates that have none.</div>`;
+  if (st.unrecognised && Object.keys(st.unrecognised).length) html += `<div class="note">Not a real state/province, so XX: ${esc(JSON.stringify(st.unrecognised))}</div>`;
+  if ((report.state_ambiguous || []).length) html += `<div class="note">${report.state_ambiguous.length} plate(s) appear both with and without a state, so they are kept as separate plates: ${esc(report.state_ambiguous.slice(0, 10).map((a) => a.plate).join(', '))}</div>`;
+  $('debug-state').innerHTML = html;
+  $('state-summary').innerHTML = st.plates_without_state ? `<div class="note"><b>${st.plates_without_state} plate record(s) have no state (XX).</b> See Debug detail → Plate state.</div>` : '';
+  const tb = $('debug-fields'); tb.textContent = '';
+  for (const [n, m] of Object.entries(d.field_map).sort((a, b) => b[1].count - a[1].count)) {
+    const tr = document.createElement('tr'); [n, m.becomes, m.count, m.empty, m.examples.join(' | ')].forEach((v) => cell(tr, v)); tb.appendChild(tr);
+  }
+  $('debug-elements').textContent = Object.entries(d.elements).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} ×${c}`).join(', ');
+  const body = $('debug-records'); const filter = $('debug-filter');
+  const draw = () => {
+    body.textContent = ''; $('debug-record-detail').textContent = '';
+    if (!d.records) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7; td.textContent = 'Per-record debug was off. Tick "Debug detail" and convert again.'; tr.appendChild(td); body.appendChild(tr); return; }
+    const q = filter.value.trim().toLowerCase(); let shown = 0, matched = 0;
+    for (const e of d.records) {
+      const line = `${e.record} ${e.source.line} ${e.alert_token} ${e.plate.raw} ${e.plate.normalized} ${e.state.code} ${e.state.source} ${e.vehicle_key}`.toLowerCase();
+      if (q && !line.includes(q)) continue;
+      matched++; if (shown >= 300) continue; shown++;
+      const tr = document.createElement('tr'); tr.style.cursor = 'pointer';
+      [e.record, e.source.line ?? '?', e.alert_token, `${e.plate.raw ?? ''} → ${e.plate.normalized ?? '(none)'}`, e.state.code, e.state.source + (e.state.raw ? ` [${e.state.raw}]` : ''), e.vehicle_key].forEach((v) => cell(tr, v));
+      tr.addEventListener('click', () => { $('debug-record-detail').innerHTML = `<pre>${esc(JSON.stringify({ ...e, source: undefined }, null, 2))}\n\nxml (line ${e.source.line}): ${esc(e.source.xml)}</pre>`; });
+      body.appendChild(tr);
+    }
+    if (matched > shown) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7; td.textContent = `…and ${matched - shown} more (filter, or download the debug text)`; tr.appendChild(td); body.appendChild(tr); }
+  };
+  filter.oninput = draw; filter.value = ''; draw();
+}
+
+async function runXml() {
+  const btn = $('convert'); btn.disabled = true; $('results').hidden = true; $('progress').hidden = false; $('progress').removeAttribute('value');
+  try {
+    // read + parse every file; a broken file is reported, the others still convert
+    const rows = []; const fileReport = []; const failed = [];
+    const wantTrace = $('debug').checked;
+    const dbg = { files: [], elements: {}, field_map: {}, record_shapes: {}, records: null }; const metas = [];
+    for (const f of xmlFiles) {
+      setStatus(`Reading ${f.name}…`);
+      const name = f.webkitRelativePath || f.name; const info = { file: name };
+      try {
+        const found = parseXml(decodeXmlBytes(new Uint8Array(await f.arrayBuffer()), info), info);
+        const entry = { file: name, records: found.length };
+        if (found.repaired) entry.repaired_characters = found.repaired;
+        fileReport.push(entry); rows.push(...found);
+        const { records: recs, elements, ...rest } = info; dbg.files.push({ ...rest, records: found.length });
+        for (const [n, c] of Object.entries(elements)) dbg.elements[n] = (dbg.elements[n] || 0) + c;
+        for (const rec of recs) {
+          const shape = Array.from(new Set(rec.children.map(([n]) => n))).sort().join(', ');
+          dbg.record_shapes[shape] = (dbg.record_shapes[shape] || 0) + 1;
+          for (const [n, v] of rec.children) {
+            const target = Object.prototype.hasOwnProperty.call(CANONICAL, n.replace(/^@/, '')) ? CANONICAL[n.replace(/^@/, '')] : null;
+            const slot = dbg.field_map[n] = dbg.field_map[n] || { becomes: target || 'notes (no field of its own)', count: 0, empty: 0, examples: [] };
+            slot.count++;
+            if (!v) slot.empty++; else if (slot.examples.length < 3 && !slot.examples.includes(v.slice(0, 80))) slot.examples.push(v.slice(0, 80));
+          }
+          if (wantTrace) metas.push({ file: name.split('/').pop(), ...rec });
+        }
+      } catch (e) {
+        failed.push({ file: name, reason: e.message || String(e) });
+        const { records: _r, elements: _e, ...rest } = info; dbg.files.push({ ...rest, failed: e.message || String(e) });
+      }
+    }
+    if (!fileReport.length) throw new Error(failed.length ? failed.map((x) => `${x.file}: ${x.reason}`).join('; ') : 'No XML file to read.');
+
+    // options
+    const coarsenText = $('coarsen').value.trim().toLowerCase();
+    const coarsen = coarsenText === 'none' ? null : (Number.isInteger(+coarsenText) && coarsenText !== '' ? +coarsenText : 4);
+    const offsets = {};
+    for (const part of $('tz').value.split(/[,;\s]+/).filter(Boolean)) { const [n, h] = part.split('='); if (n && Number.isFinite(parseFloat(h))) offsets[n.toUpperCase()] = parseFloat(h); }
+    const overrides = $('overrides-input').files[0] ? parseOverrides(await readText($('overrides-input').files[0])) : {};
+    const provider = { census: censusGeocode, nominatim: nominatimGeocode, none: null }[$('geocode').value];
+    const cache = loadCache();
+    const geocoder = new Geocoder({ provider, overrides, defaultArea: $('area').value, coarsen, cache, onProgress: (n) => setStatus(`Looking up addresses… ${n} done`) });
+    const mediaFiles = Array.from($('media-input').files);
+    const repo = $('repo-input').files.length ? await repoData() : null;
+
+    const trace = wantTrace ? [] : null;
+    const result = await buildXml(rows, {
+      flag: $('flag').value, offsets, geocoder, defaultState: $('default-state').value, trace,
+      mediaIndex: mediaFiles.length ? buildMediaIndex(mediaFiles) : null,
+      existingVehicles: repo ? repo.vehicles : null, existingPlates: repo ? repo.plates : {},
+      onStatus: setStatus
+    });
+    saveCache(cache);
+    if (trace) { trace.forEach((e, i) => { e.source = { file: metas[i].file, line: metas[i].line, xml: metas[i].snippet }; }); dbg.records = trace; }
+    result.report.debug = dbg;
+    result.report.files = fileReport; result.report.files_failed = failed;
+    result.problems = validateFiles(result.files);
+    last = { mode: 'xml', result, usedRepo: !!repo };
+    showResult();
+    setStatus('Done.');
+  } catch (e) {
+    setStatus('Error: ' + (e.message || e));
+  } finally {
+    $('progress').hidden = true; btn.disabled = xmlFiles.length === 0;
+  }
+}
+function showResultXml() {
+  const { result, usedRepo } = last; const { counts, report } = result;
+  const stat = (n, label) => `<div class="stat"><b>${n}</b><span>${label}</span></div>`;
+  $('stats').innerHTML = stat(counts.records_read, 'records read') + stat(counts.vehicles, 'vehicles') + stat(counts.sightings, 'sightings') +
+    stat(counts.plates, 'plates') + stat(counts.located, 'with a location') + stat(counts.photos, 'photos') + stat(counts.already_imported, 'already imported (left alone)');
+  {
+    const c = report.check; const day = (t) => t.slice(0, 10);
+    const ok = c.complete; const lines = [];
+    lines.push(`<b class="${ok ? 'good' : 'bad'}">${ok ? 'Check passed' : 'CHECK FAILED'}: ${c.records_read.toLocaleString()} records read = ${c.already_imported.toLocaleString()} already in your data + ${c.new.toLocaleString()} new + ${c.repeated_in_file.toLocaleString()} repeated within the file.</b>${ok ? ' Every record in the XML is accounted for.' : ` Only ${c.accounted_for.toLocaleString()} are accounted for. Do not push; send the report to whoever maintains the tool.`}`);
+    if (c.date_range) lines.push(`Records in this file are dated ${day(c.date_range[0])} to ${day(c.date_range[1])}.` + (c.new_date_range ? ` The new ones are dated ${day(c.new_date_range[0])} to ${day(c.new_date_range[1])}.` : '') + (c.no_date ? ` ${c.no_date} have no usable date.` : ''));
+    if (c.new) lines.push(`${c.with_location_new.toLocaleString()} of the ${c.new.toLocaleString()} new sightings have a map location; ${c.without_location_new.toLocaleString()} do not (their address stays in the notes).`);
+    if (ok && !c.new && usedRepo) lines.push('<b>Nothing new.</b> Everything in this file is already in your data, so there is nothing to push. This is the result you want when you re-run a file after importing it.');
+    if (!usedRepo) lines.push('<b class="bad">You did not choose your existing data folder (step 2).</b> The tool cannot tell which records are already imported, so every record is treated as new and can overwrite edits. Go back and choose it before pushing.');
+    $('check-panel').innerHTML = `<div class="note" style="border-left-color:var(--${ok && usedRepo ? 'ok' : 'bad'})">${lines.join('<br>')}</div>`;
+  }
+  const w = []; const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const g = report.geocoding;
+  if (report.files_failed.length) w.push(`<div class="note"><b class="bad">${report.files_failed.length} file(s) could not be read and were skipped:</b> ${esc(report.files_failed.map((x) => x.file + ' (' + x.reason + ')').join('; '))}</div>`);
+  const fixedFiles = (report.files || []).filter((x) => x.repaired_characters);
+  if (fixedFiles.length) w.push(`<div class="note"><b>${fixedFiles.length} file(s) were not valid XML</b> (stray &lt; or &amp; characters in the text) and were repaired automatically: ${esc(fixedFiles.map((x) => x.file + ' (' + x.repaired_characters + ')').join('; '))}. The text is kept as written.</div>`);
+  if (g.unmatched.length) w.push(`<div class="note">${g.unmatched.length} address(es) were not found, so their location is unknown (the address stays in the notes).</div>`);
+  if (g.unavailable) w.push(`<div class="note">The address service could not be reached for ${g.unavailable} lookup(s); those locations are unknown. Run the conversion again later: addresses already found are remembered.</div>`);
+  const fresh = report.new_records.length; const freshVeh = report.new_records.filter((r) => r.new_vehicle).length;
+  w.push(`<div class="note"><b>${fresh} new sighting(s)</b> (${freshVeh} on new vehicles, ${new Set(report.new_records.filter((r) => !r.new_vehicle).map((r) => r.vehicle)).size} existing vehicles updated). <b>${counts.already_imported}</b> record(s) were already in the data and were left exactly as they are.${usedRepo ? '' : ' Pick your repo\'s data folder before converting, or already-imported records cannot be recognised and are written again.'}</div>`);
+  if (report.redirected.length) w.push(`<div class="note">${report.redirected.length} group(s) joined a vehicle you edited or renamed since the first import (plate state changed, for example) instead of creating a duplicate.</div>`);
+  if (report.flag_changed.length) w.push(`<div class="note">${report.flag_changed.length} vehicle flag(s) changed because the new sighting is newer than anything recorded: ${esc(report.flag_changed.map((x) => x.vehicle + ' ' + x.from + ' to ' + x.to).join('; '))}</div>`);
+  if (report.needs_review.length) w.push(`<div class="note">${report.needs_review.length} record(s) have no usable date and were set to 1970-01-01. They never show as recent.</div>`);
+  if (report.assumptions.length) w.push(`<div class="note">${report.assumptions.length} assumption(s) about dates or time zones (see the report).</div>`);
+  if (report.duplicate_records.length) w.push(`<div class="note">${report.duplicate_records.length} repeated record id(s) were merged.</div>`);
+  if (report.media_not_imported.length) w.push(`<div class="note">${report.media_not_imported.length} media item(s) not imported (see the report).</div>`);
+  if (report.plate_conflicts.length) w.push(`<div class="note">${report.plate_conflicts.length} plate(s) already belong to another vehicle in the repo; the existing plate record was kept.</div>`);
+  const np = Object.keys(report.plates_not_storable);
+  if (np.length) w.push(`<div class="note">Plates not stored (1 to 20 letters or digits only; the text is in the notes): ${esc(np.join(', '))}</div>`);
+  const un = Object.keys(report.unmapped_fields);
+  if (un.length) w.push(`<div class="note">Data with no field of its own was added to the notes: ${esc(un.map((k) => `${k} (x${report.unmapped_fields[k].length})`).join(', '))}</div>`);
+  $('warnings').innerHTML = w.join('');
+  $('index-step').innerHTML = usedRepo
+    ? '<code>data/index.json</code> is included and already contains your existing vehicles.'
+    : '<div class="note"><b>index.json is not in this ZIP</b> because the repo\'s data folder was not chosen. After unzipping, rebuild it so Local search sees the new vehicles: <pre>python3 scripts/build_index.py</pre></div>';
+  const tbody = $('vehicle-rows'); tbody.textContent = '';
+  for (const v of result.vehicles.slice(0, 500)) {
+    const tr = document.createElement('tr');
+    for (const val of [v.name, v.plate || '-', v.sightings, v.located, v.photos]) { const td = document.createElement('td'); td.textContent = val; tr.appendChild(td); }
+    tbody.appendChild(tr);
+  }
+  if (result.vehicles.length > 500) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.textContent = `…and ${result.vehicles.length - 500} more`; tr.appendChild(td); tbody.appendChild(tr); }
+  renderDebug(report, esc);
+  $('results').hidden = false;
+  $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------- CSV ----------
+
+function currentOpts() {
+  const coarsenText = $('coarsen').value.trim().toLowerCase();
+  const coarsen = coarsenText === 'none' ? null : (Number.isInteger(+coarsenText) && coarsenText !== '' ? +coarsenText : 4);
+  const detected = detectDateOrder(table ? table.rows : [], mapping);
+  const chosen = $('date-order').value;
+  return {
+    headers: table ? table.headers : [], order: chosen === 'auto' ? detected.order : chosen, detected,
+    offsetHours: TZ_OFFSETS[$('csv-tz').value], defaultState: $('default-state').value, flag: $('flag').value, coarsen
+  };
+}
+
+// ---------- step 1: reading files ----------
+
+async function addCsvFiles(list) {
+  for (const f of Array.from(list)) {
+    if (!/\.(csv|tsv|txt)$/i.test(f.name)) continue;
+    if (parsedFiles.some((p) => p.file.name === f.name && p.file.size === f.size && p.file.lastModified === f.lastModified)) continue;
+    const info = {};
+    const text = decodeBytes(new Uint8Array(await f.arrayBuffer()), info);
+    parsedFiles.push({ file: f, name: f.name, parsed: parseCsv(text), encoding: info.encoding });
+  }
+  rebuildTable();
+}
+$('has-header').addEventListener('change', rebuildTable);
+$('download-template').addEventListener('click', (e) => { e.preventDefault(); download(new Blob([TEMPLATE_CSV], { type: 'text/csv' }), 'parkingtracker-import-template.csv'); });
+
+function rebuildTable() {
+  const ul = $('file-list'); ul.textContent = '';
+  const notes = [];
+  for (const p of parsedFiles) {
+    const li = document.createElement('li');
+    const delimName = { ',': 'comma', ';': 'semicolon', '\t': 'tab' }[p.parsed.delimiter];
+    li.textContent = `${p.name} (${(p.file.size / 1024).toFixed(1)} KB, ${p.parsed.rows.length.toLocaleString()} non-empty lines, ${delimName}-separated, ${p.encoding.split(' (')[0]})`;
+    ul.appendChild(li);
+    if (p.parsed.unclosedQuote) notes.push(`<b class="bad">${esc(p.name)}: a quote that opens on line ${p.parsed.unclosedQuote} is never closed</b>, so everything after it is read as one cell. Fix the file and choose it again.`);
+    if (!p.encoding.startsWith('UTF-8') && !p.encoding.startsWith('UTF-16')) notes.push(`${esc(p.name)} is not UTF-8; it was read as ${esc(p.encoding)}. Check accented letters in the preview.`);
+  }
+  $('file-status').innerHTML = notes.map((n) => `<div class="note">${n}</div>`).join('');
+  table = null;
+  if (!parsedFiles.length) { renderMapping(); renderPreview(); $('convert').disabled = true; return; }
+  const hasHeader = $('has-header').checked;
+  const first = parsedFiles[0].parsed.rows;
+  if (!first.length) { renderMapping(); renderPreview(); $('convert').disabled = true; return; }
+  const width = Math.max(...parsedFiles.flatMap((p) => p.parsed.rows.map((r) => r.cells.length)));
+  const headers = hasHeader ? Array.from({ length: width }, (_, i) => stripSpaces(first[0].cells[i])) : Array.from({ length: width }, (_, i) => `Column ${i + 1}`);
+  const rows = []; let problem = null;
+  parsedFiles.forEach((p, n) => {
+    let body = p.parsed.rows;
+    if (hasHeader) {
+      const same = body.length && headers.every((h, i) => normHeader(h) === normHeader(body[0].cells[i]));
+      if (n > 0 && !same) problem = `${p.name} has different column headings from ${parsedFiles[0].name}. Convert files with different layouts one at a time.`;
+      body = body.slice(1);
+    }
+    for (const r of body) rows.push({ cells: r.cells, line: parsedFiles.length > 1 ? `${p.name}:${r.line}` : r.line });
+  });
+  table = { headers, rows, problem };
+  if (problem) $('file-status').innerHTML += `<div class="note"><b class="bad">${esc(problem)}</b></div>`;
+  const signature = headers.map(normHeader).join('|');
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ptc-mapping-v1:' + signature) || 'null'); } catch { /* storage blocked */ }
+  mapping = Array.isArray(saved) && saved.length === headers.length && saved.every((t) => TARGETS.some(([id]) => id === t)) ? saved : guessMapping(headers);
+  table.signature = signature;
+  renderMapping(); renderPreview();
+  $('convert').disabled = !!problem || !rows.length;
+}
+
+// ---------- step 3: columns and preview ----------
+
+function renderMapping() {
+  const tbody = $('map-rows'); tbody.textContent = '';
+  $('map-wrap').hidden = !table;
+  if (!table) { $('map-warnings').textContent = ''; return; }
+  table.headers.forEach((h, i) => {
+    const tr = document.createElement('tr');
+    const th = document.createElement('td'); th.textContent = h || `(no heading, column ${i + 1})`; th.style.fontWeight = '600'; tr.appendChild(th);
+    const ex = document.createElement('td'); ex.className = 'hint';
+    ex.textContent = table.rows.map((r) => stripSpaces(r.cells[i])).filter(Boolean).filter((v, n, a) => a.indexOf(v) === n).slice(0, 3).join(' · ').slice(0, 90);
+    tr.appendChild(ex);
+    const td = document.createElement('td'); const sel = document.createElement('select'); sel.setAttribute('aria-label', `What column ${h || i + 1} becomes`);
+    for (const [id, label] of TARGETS) { const o = document.createElement('option'); o.value = id; o.textContent = label; sel.appendChild(o); }
+    sel.value = mapping[i];
+    sel.addEventListener('change', () => { mapping[i] = sel.value; try { localStorage.setItem('ptc-mapping-v1:' + table.signature, JSON.stringify(mapping)); } catch { /* storage blocked */ } renderMappingWarnings(); renderPreview(); });
+    td.appendChild(sel); tr.appendChild(td); tbody.appendChild(tr);
+  });
+  renderMappingWarnings();
+}
+
+function renderMappingWarnings() {
+  const w = []; const has = (t) => mapping.includes(t);
+  if (!has('plate')) w.push('<b>No column is the plate.</b> Every row becomes its own vehicle without a plate, so the same vehicle seen twice is not recognised.');
+  if (!has('first') && !has('last') && !has('date')) w.push('<b>No column is a date.</b> Every sighting will be dated 1970-01-01 and never show as recent.');
+  if (!has('vehicle') && !has('make') && !has('color') && !has('model')) w.push('<b>No column describes the vehicle</b> (color, make, model). Vehicles will show as "Unknown". If a column such as <code>Description</code> holds it, set it to "Color, make and model in one column".');
+  const repeated = ['plate', 'state', 'color', 'make', 'model', 'vehicle', 'body', 'year', 'first', 'last', 'date', 'address', 'lat', 'lng', 'flag'].filter((t) => mapping.filter((m) => m === t).length > 1);
+  if (repeated.length) w.push(`Several columns are set to ${esc(repeated.join(', '))}; for each row the first one that is not empty is used.`);
+  if (has('address') && $('geocode').value === 'none') w.push('An address column is set but address lookup is off (step 4), so no locations will be found; the address stays in the notes.');
+  $('map-warnings').innerHTML = w.map((x) => `<div class="note">${x}</div>`).join('');
+}
+
+function renderPreview() {
+  const tbody = $('preview-rows'); tbody.textContent = '';
+  if (!table || !table.rows.length) {
+    const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7; td.className = 'hint'; td.textContent = table ? 'The file has no data rows.' : 'Choose a CSV file to see a preview.'; tr.appendChild(td); tbody.appendChild(tr); return;
+  }
+  const o = currentOpts();
+  for (const r of table.rows.slice(0, 8)) {
+    const it = interpretRow(r.cells, mapping, o);
+    const tr = document.createElement('tr');
+    const plate = it.plate ? `${it.state.code}-${it.plate}` : '(no plate)';
+    const vehicle = [it.color === UNKNOWN ? '' : pyTitle(it.color), it.make === 'Unknown' ? '' : it.make, it.model].filter(Boolean).join(' ') || '(unknown)';
+    const cells = [r.line, plate, vehicle, it.bodyStyle, it.times.map((t) => t.stamp).join(', '), it.flag, it.noteLines.join(' | ').slice(0, 140)];
+    cells.forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+    if (it.issues.length) { tr.title = it.issues.join('; '); tr.lastChild.textContent += (tr.lastChild.textContent ? ' ' : '') + '⚠'; tr.classList.add('warn-row'); }
+    tbody.appendChild(tr);
+  }
+  const more = table.rows.length - 8;
+  const d = o.detected;
+  const info = [];
+  info.push(`${table.rows.length.toLocaleString()} data row(s).`);
+  if (mapping.some((t) => ['first', 'last', 'date'].includes(t))) {
+    const word = o.order === 'dmy' ? 'day/month/year' : 'month/day/year';
+    if ($('date-order').value === 'auto') {
+      if (d.why === 'mixed') info.push(`<b class="bad">The dates mix day-first and month-first (for example both 25/01/26 and 01/25/26).</b> Dates are read as month/day/year; set <b>Date order</b> in step 4 if that is wrong and fix the file.`);
+      else if (d.why === 'ambiguous') info.push(`Dates are read as <b>${word}</b>. Every date could be read either way, so check the "Sightings on" column above (shown as year-month-day) and change <b>Date order</b> in step 4 if it is wrong.`);
+      else if (d.why !== 'none') info.push(`Dates are read as <b>${word}</b> (${d.why === 'day-first' ? `${d.dayFirst} date(s) have a day above 12 in the first position` : `${d.monthFirst} date(s) have a day above 12 in the second position`}).`);
+    } else info.push(`Dates are read as <b>${word}</b> (your choice).`);
+  }
+  const p = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 7; td.className = 'hint';
+  td.innerHTML = (more > 0 ? `…and ${more.toLocaleString()} more rows. ` : '') + info.join(' ');
+  p.appendChild(td); tbody.appendChild(p);
+}
+for (const id of ['date-order', 'csv-tz', 'flag', 'default-state', 'coarsen']) $(id).addEventListener('change', renderPreview);
+$('coarsen').addEventListener('input', renderPreview);
+$('geocode').addEventListener('change', () => { if (table) renderMappingWarnings(); });
+
+async function runCsv() {
+  const btn = $('convert'); btn.disabled = true; $('results').hidden = true; $('progress').hidden = false; $('progress').removeAttribute('value');
+  try {
+    if (!table || !table.rows.length) throw new Error('There are no data rows to convert.');
+    const o = currentOpts();
+    const rows = table.rows.map((r) => ({ item: interpretRow(r.cells, mapping, o), line: r.line }));
+    const provider = { census: censusGeocode, nominatim: nominatimGeocode, none: null }[$('geocode').value];
+    const geocoder = new Geocoder({ provider, overrides: {}, defaultArea: $('area').value, coarsen: o.coarsen, cache: loadCache(), onProgress: (n) => setStatus(`Looking up addresses… ${n} done`) });
+    const repo = $('repo-input').files.length ? await repoData() : null;
+    const result = await buildCsv(rows, {
+      geocoder, existingVehicles: repo ? repo.vehicles : null, existingPlates: repo ? repo.plates : {}, offsetHours: o.offsetHours,
+      skipSameDay: $('skip-same-day').checked, fillUnknown: $('fill-unknown').checked, onStatus: setStatus
+    });
+    saveCache(geocoder.cache);
+    result.report.files = parsedFiles.map((p) => ({ file: p.name, rows: p.parsed.rows.length, encoding: p.encoding }));
+    result.report.options = { date_order: o.order, date_order_evidence: o.detected.why, time_zone: $('csv-tz').value, flag: o.flag, default_state: o.defaultState, columns: table.headers.map((h, i) => ({ column: h, becomes: mapping[i] })) };
+    result.problems = validateFiles(result.files);
+    last = { mode: 'csv', result, usedRepo: !!repo };
+    showResult();
+    setStatus('Done.');
+  } catch (e) {
+    setStatus('Error: ' + (e.message || e));
+  } finally {
+    $('progress').hidden = true; btn.disabled = !table || !table.rows.length || !!(table && table.problem);
+  }
+}
+function showResultCsv() {
+  const { result, usedRepo } = last; const { counts, report, problems } = result;
+  const stat = (n, label) => `<div class="stat"><b>${Number(n).toLocaleString()}</b><span>${label}</span></div>`;
+  $('stats').innerHTML = stat(counts.rows_read, 'rows read') + stat(counts.sightings_read, 'sightings in the file') + stat(counts.sightings, 'new sightings') + stat(counts.vehicles, 'vehicles written') +
+    stat(counts.plates, 'plates written') + stat(counts.located, 'with a location') + stat(counts.already_imported, 'already in your data (left alone)');
+  {
+    const c = report.check; const day = (t) => t.slice(0, 10);
+    const ok = c.complete; const lines = [];
+    lines.push(`<b class="${ok ? 'good' : 'bad'}">${ok ? 'Check passed' : 'CHECK FAILED'}: ${c.sightings_read.toLocaleString()} sightings in the file = ${c.already_imported.toLocaleString()} already in your data + ${c.new.toLocaleString()} new + ${c.repeated_in_file.toLocaleString()} repeated within the file.</b>${ok ? ' Every sighting in the CSV is accounted for.' : ` Only ${c.accounted_for.toLocaleString()} are accounted for. Do not push; send the report to whoever maintains the tool.`}`);
+    lines.push(`(${c.rows_read.toLocaleString()} rows; a row with different Earliest and Last Seen dates is two sightings.)`);
+    if (c.same_date_skipped) lines.push(`${c.same_date_skipped.toLocaleString()} of the "already in your data" sightings were skipped because the vehicle already had a sighting on that date.`);
+    if (c.date_range) lines.push(`Sightings in this file are dated ${day(c.date_range[0])} to ${day(c.date_range[1])}.` + (c.new_date_range ? ` The new ones are dated ${day(c.new_date_range[0])} to ${day(c.new_date_range[1])}.` : '') + (c.no_date ? ` ${c.no_date} have no usable date.` : ''));
+    if (c.new) lines.push(`${c.with_location_new.toLocaleString()} of the ${c.new.toLocaleString()} new sightings have a map location; ${c.without_location_new.toLocaleString()} do not.`);
+    if (ok && !c.new && usedRepo && !report.filled_in.length) lines.push('<b>Nothing new.</b> Everything in this file is already in your data, so there is nothing to push. This is the result you want when you re-run a file after importing it.');
+    if (ok && !c.new && usedRepo && report.filled_in.length) lines.push(`<b>No new sightings,</b> but ${report.filled_in.length} vehicle(s) had unknown details filled in (see below); the ZIP holds them. Run the file again after unzipping: it must then say Nothing new.`);
+    if (!usedRepo) lines.push('<b class="bad">You did not choose your existing data folder (step 2).</b> The tool cannot tell which records are already imported, so every sighting is treated as new and a vehicle that already exists gets a second copy. Go back and choose it before pushing.');
+    $('check-panel').innerHTML = `<div class="note" style="border-left-color:var(--${ok && usedRepo ? 'ok' : 'bad'})">${lines.join('<br>')}</div>`;
+  }
+
+  const w = [];
+  const g = report.geocoding;
+  const joined = report.new_records.filter((r) => !r.new_vehicle);
+  w.push(`<div class="note"><b>${report.new_records.length} new sighting(s)</b> (${report.new_records.filter((r) => r.new_vehicle).length} on new vehicles, ${new Set(joined.map((r) => r.vehicle)).size} existing vehicles updated). <b>${counts.already_imported}</b> sighting(s) were already in the data and were left exactly as they are.</div>`);
+  if (g.unmatched.length) w.push(`<div class="note">${g.unmatched.length} address(es) were not found, so their location is unknown (the address stays in the notes).</div>`);
+  if (g.unavailable) w.push(`<div class="note">The address service could not be reached for ${g.unavailable} lookup(s); those locations are unknown. Run the conversion again later: addresses already found are remembered.</div>`);
+  if (report.redirected.length) w.push(`<div class="note">${report.redirected.length} plate(s) joined a vehicle already in the data (one you edited or renamed, one whose plate had no state, or one that came from another import) instead of creating a duplicate.</div>`);
+  if (report.state_to_set.length) w.push(`<div class="note"><b>${report.state_to_set.length} plate(s) are in your data without a state (XX) and the CSV gives one.</b> The new sightings were added to the vehicle already there, and the state is written in their notes. The plate record itself is not renamed here: set the state in <code>search.html</code> (open the vehicle, change the plate state). ${esc(report.state_to_set.slice(0, 12).map((x) => 'XX-' + x.plate + ' → ' + x.state_in_csv).join(', '))}${report.state_to_set.length > 12 ? ', …' : ''} (all of them are in the report).</div>`);
+  if (report.filled_in.length) w.push(`<div class="note">${report.filled_in.length} vehicle(s) already in the data had details that were <code>unknown</code> filled in from the CSV (${esc(report.filled_in.slice(0, 8).map((x) => (x.plate || x.vehicle) + ': ' + x.fields.join('/')).join('; '))}${report.filled_in.length > 8 ? '; …' : ''}). Known values were not changed. Untick the option in step 4 and run again if you do not want this.</div>`);
+  if (report.flag_changed.length) w.push(`<div class="note">${report.flag_changed.length} vehicle flag(s) changed because the new sighting is newer than anything recorded: ${esc(report.flag_changed.map((x) => x.vehicle + ' ' + x.from + ' to ' + x.to).join('; '))}</div>`);
+  if (report.needs_review.length) w.push(`<div class="note">${report.needs_review.length} row(s) have no usable date and were set to 1970-01-01. They never show as recent.</div>`);
+  if (report.assumptions.length) w.push(`<div class="note">${esc(report.assumptions.map((a) => a.note).join('; '))}.</div>`);
+  if (report.duplicate_records.length) w.push(`<div class="note">${report.duplicate_records.length} row(s) repeat the same plate and date as an earlier row; they were merged into one sighting and their notes combined.</div>`);
+  if (report.plate_conflicts.length) w.push(`<div class="note">${report.plate_conflicts.length} plate(s) already belong to another vehicle in the repo; the existing plate record was kept.</div>`);
+  if (report.state_ambiguous.length) w.push(`<div class="note">${report.state_ambiguous.length} plate(s) appear both with and without a state (${esc(report.state_ambiguous.slice(0, 8).map((x) => x.plate).join(', '))}). Fill in the State column and run again, or fix them in the data tool.</div>`);
+  const np = Object.keys(report.plates_not_storable);
+  if (np.length) w.push(`<div class="note">Plates not stored (1 to 20 letters or digits only; the text is in the notes): ${esc(np.join(', '))}</div>`);
+  $('warnings').innerHTML = w.join('');
+
+  const st = report.states; const byCode = Object.entries(st.by_code).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} × ${v}`).join(', ');
+  $('state-summary').innerHTML = byCode ? `<p class="hint">Plate states: ${esc(byCode)}.${st.plates_without_state ? ` ${st.plates_without_state} row(s) have no state (XX).` : ''}</p>` : '';
+  $('index-step').innerHTML = usedRepo
+    ? '<code>data/index.json</code> is included and already contains your existing vehicles.'
+    : '<div class="note"><b>index.json is not in this ZIP</b> because the repo\'s data folder was not chosen. After unzipping, rebuild it so Local search sees the new vehicles: <pre>python3 scripts/build_index.py</pre></div>';
+
+  const att = $('attention-rows'); att.textContent = '';
+  for (const r of report.row_issues.slice(0, 300)) {
+    const tr = document.createElement('tr');
+    for (const v of [r.line, r.issue]) { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }
+    att.appendChild(tr);
+  }
+  $('attention-panel').hidden = !report.row_issues.length; $('attention-panel').open = report.row_issues.length > 0 && report.row_issues.length <= 20;
+  $('attention-panel').querySelector('summary').textContent = `Rows that need a look (${report.row_issues.length})`;
+
+  const tbody = $('vehicle-rows'); tbody.textContent = '';
+  for (const v of result.vehicles.slice(0, 500)) {
+    const tr = document.createElement('tr');
+    for (const val of [v.name + (v.existing ? ' (existing vehicle)' : ''), v.plate || '-', v.sightings, v.located]) { const td = document.createElement('td'); td.textContent = val; tr.appendChild(td); }
+    tbody.appendChild(tr);
+  }
+  if (result.vehicles.length > 500) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 4; td.textContent = `…and ${result.vehicles.length - 500} more`; tr.appendChild(td); tbody.appendChild(tr); }
+  $('results').hidden = false;
+  $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+// ---------- convert, result, downloads ----------
+
+$('convert').addEventListener('click', () => (mode === 'csv' ? runCsv() : runXml()));
+
+function showResult() {
+  const xml = mode === 'xml';
+  $('vehicle-head').innerHTML = xml
+    ? '<tr><th>Vehicle</th><th>Plate</th><th>Sightings</th><th>Located</th><th>Photos</th></tr>'
+    : '<tr><th>Vehicle</th><th>Plate</th><th>New sightings</th><th>Located</th></tr>';
+  if (xml) showResultXml(); else showResultCsv();
+  renderValidation(last.result);
+}
+
+// The format check (schema/) runs for both sources. If it finds problems the ZIP is held back, unless the person chooses to
+// ignore the conflicts (for example to keep a plate state this tool does not know). The report records that it was ignored.
+function renderValidation(result) {
+  const problems = result.problems || [];
+  last.ignored = false;
+  const count = Array.from(result.files.keys()).filter((p) => p !== 'data/index.json').length;
+  $('validation-panel').innerHTML = problems.length
+    ? `<div class="note" style="border-left-color:var(--bad)"><b class="bad">The new files do not match the record format (${problems.length} problem(s)). The ZIP is held back.</b> Fix the source and convert again, or choose <b>Ignore conflicts and download anyway</b> to keep them as they are (the data validator will then report the same problems).<br>${esc(problems.slice(0, 8).join('; '))}${problems.length > 8 ? ` …and ${problems.length - 8} more (see the report)` : ''}</div>`
+    : `<div class="note" style="border-left-color:var(--ok)"><b class="good">Format check passed:</b> all ${count.toLocaleString()} new or changed record files match the schema.</div>`;
+  $('download-zip').disabled = problems.length > 0;
+  $('download-anyway').hidden = problems.length === 0;
+}
+
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+const csvCell = (v) => { const t = v === null || v === undefined ? '' : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+$('download-zip').addEventListener('click', () => { if (last && !(last.result.problems || []).length) download(makeZip(last.result.files), 'parkingtracker-import.zip'); });
+$('download-anyway').addEventListener('click', () => {
+  if (!last || !(last.result.problems || []).length) return;
+  const n = last.result.problems.length;
+  if (!confirm(`${n} record(s) do not match the record format. If you keep them, scripts/validate_records.py will report the same problems until they are fixed (for example in the data tool).\n\nDownload the ZIP anyway?`)) return;
+  last.ignored = true;
+  download(makeZip(last.result.files), 'parkingtracker-import.zip');
+  $('validation-panel').insertAdjacentHTML('beforeend', '<div class="note"><b>Conflicts ignored.</b> The ZIP was downloaded with the problems above. Fix them before the data is used.</div>');
+});
+$('download-records').addEventListener('click', () => {
+  if (!last) return;
+  let rows;
+  if (last.mode === 'csv') {
+    rows = [['row', 'plate', 'timestamp', 'result', 'vehicle', 'location_found', 'reason']];
+    for (const r of last.result.report.records) rows.push([r.line, r.plate || '', r.timestamp, r.result, r.vehicle, r.located === null ? '' : (r.located ? 'yes' : 'no'), r.reason || '']);
+  } else {
+    rows = [['alert_token', 'result', 'vehicle', 'plate', 'timestamp', 'location_found']];
+    for (const r of last.result.report.records) rows.push([r.alert_token, r.result, r.vehicle, r.plate || '', r.timestamp, r.located === null ? '' : (r.located ? 'yes' : 'no')]);
+  }
+  download(new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n') + '\n'], { type: 'text/csv' }), last.mode + '-import-records.csv');
+});
+$('download-report').addEventListener('click', () => {
+  if (!last) return;
+  const report = last.mode === 'csv'
+    ? { ...last.result.report, validation_problems: last.result.problems, conflicts_ignored: !!last.ignored }
+    : { ...last.result.report, validation_problems: last.result.problems, conflicts_ignored: !!last.ignored, debug: { ...last.result.report.debug, records: null } }; // the per-record trace is in the debug text
+  download(new Blob([dump(report)], { type: 'application/json' }), last.mode + '-import-report.json');
+});
+$('download-debug').addEventListener('click', () => { if (last && last.mode === 'xml') download(new Blob([debugText(last.result.report)], { type: 'text/plain' }), 'xml-import-debug.txt'); });
+$('download-template').addEventListener('click', (e) => { e.preventDefault(); download(new Blob([TEMPLATE_CSV], { type: 'text/csv' }), 'parkingtracker-import-template.csv'); });
+
+window.PTImport = { xml: { parseState, stateFromText, resolveState, debugText, repairXml, lineTable, sha1Hex, pyJson, decodeXmlBytes, parseXml, parseTimestamp, parseMake, pickMedia, build: buildXml, makeZip, crc32, Geocoder, parseOverrides, TZ_OFFSETS, ImportXmlError, GeocodeUnavailable, censusGeocode, nominatimGeocode },
+  csv: { parseCsv, parseCsvDate, detectDateOrder, guessMapping, interpretRow, build: buildCsv, validateFiles, makeZip, decodeBytes, TARGETS, TZ_OFFSETS } };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "parkingtracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Photo-first neighborhood watch vehicle tracker (PWA, GitHub-backed)",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "test:py": "python3 -m unittest discover -s tests -p 'test_*.py'",
+    "build-index": "python3 scripts/build_index.py",
+    "validate": "python3 scripts/validate_records.py",
+    "serve": "python3 -m http.server 8080 --directory web",
+    "import-xml": "python3 scripts/migrate_xml_to_json.py",
+    "sample-data": "python3 scripts/generate_sample_data.py",
+    "sample-data:clean": "python3 scripts/generate_sample_data.py --clean",
+    "test:e2e": "python3 tests/e2e_smoke.py && python3 tests/e2e_sample_data.py && python3 tests/e2e_lookup.py && python3 tests/e2e_search_tool.py && python3 tests/e2e_edit_tool.py"
+  }
+}

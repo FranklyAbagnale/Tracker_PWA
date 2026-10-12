@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tracker glossary</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#15202b; --mut:#566474; --card:#fff; --line:#dde2e8; --acc:#1259d6; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f151c; --fg:#e7ecf1; --mut:#9aa8b6; --card:#18212b; --line:#2a3643; --acc:#6aa2ff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding:16px 16px 64px; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  a { color: var(--acc); }
+  h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.15; margin: 8px 0 6px; }
+  h2 { font-size: 1.15rem; margin: 0 0 10px; }
+  p.lede { color: var(--mut); margin: 0 0 14px; max-width: 62ch; }
+  .back { display:inline-block; margin-bottom: 6px; }
+  input[type=search] { width:100%; font:inherit; padding:10px 12px; color:var(--fg); background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  nav { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+  nav a { font-size:.85rem; padding:4px 12px; border:1px solid var(--line); border-radius:99px; color:var(--fg); text-decoration:none; background:var(--card); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:14px 0; }
+  table { width:100%; border-collapse:collapse; font-size:.95rem; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; font-size:.85rem; }
+  td:first-child { white-space:nowrap; font-weight:700; font-family: ui-monospace, Menlo, Consolas, monospace; width:1%; }
+  tr[hidden] { display:none; }
+  h3 { font-size:.95rem; margin:14px 0 4px; color:var(--mut); }
+  .dot { display:inline-block; width:.8em; height:.8em; border-radius:50%; margin-right:6px; vertical-align:-1px; }
+  .none { color:var(--mut); display:none; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; background:var(--bg); padding:1px 5px; border-radius:5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">&larr; Back to the app</a>
+  <h1>Glossary</h1>
+  <p class="lede">Abbreviations and terms used in the app, the data and the admin tools. Type in the box to filter.</p>
+  <input type="search" id="filter" placeholder="Filter: CA, Sonora, GOV, flag, VIN…" aria-label="Filter the glossary" autocomplete="off">
+  <nav aria-label="Sections"><a href="#states">Plate states</a><a href="#flags">Flags</a><a href="#vehicle">Vehicle</a><a href="#plates">Plates</a><a href="#ids">Ids and keys</a><a href="#tools">Tools and files</a><a href="#time">Time zones</a></nav>
+
+  <section id="states">
+    <h2>Plate states</h2>
+    <p>Every plate has a state. A plate is identified by state + plate, so <code>CA-ABC1234</code> and <code>NV-ABC1234</code> are different plates. US and Canadian codes are 2 letters, Mexican states are 3 letters (ISO 3166-2:MX). <code>USG</code> and <code>GOV</code> are federal and government plates and can carry a code after a dash, for example <code>GOV-DHS</code> or <code>USG-G42</code>; the code is part of the state. Searching <code>GOV</code> finds every <code>GOV-…</code> plate.</p>
+    <div id="state-tables"><p class="none" style="display:block">Loading the state list…</p></div>
+    <table class="rows"><thead><tr><th>Code</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td>GOV-DHS</td><td>A government plate (<code>GOV</code>) with the code <code>DHS</code> after it. The code is whatever is on the plate: an agency, a department or a fleet number.</td></tr>
+      <tr><td>USG-G42</td><td>A US federal plate (<code>USG</code>) with the code <code>G42</code>.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="flags">
+    <h2>Flags</h2>
+    <p>Each vehicle has a flag. The Nearby list is ordered by flag, then by distance.</p>
+    <table class="rows"><thead><tr><th>Flag</th><th>Colour</th><th>Order</th></tr></thead><tbody>
+      <tr><td>confirmed</td><td><span class="dot" style="background:#b91c1c"></span>red</td><td>1st. Hidden when last seen more than 14 days ago</td></tr>
+      <tr><td>suspected</td><td><span class="dot" style="background:#d97706"></span>orange</td><td>2nd</td></tr>
+      <tr><td>cleared</td><td><span class="dot" style="background:#16a34a"></span>green</td><td>3rd, mixed with <code>pigs</code> by distance. A vehicle marked cleared is never deleted</td></tr>
+      <tr><td>pigs</td><td><span class="dot" style="background:#2563eb"></span>blue</td><td>3rd, mixed with <code>cleared</code> by distance</td></tr>
+      <tr><td>unknown</td><td><span class="dot" style="background:#eab308"></span>yellow</td><td>Last. The default when nothing has been decided</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="vehicle">
+    <h2>Vehicle</h2>
+    <table class="rows"><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td>sedan</td><td>Body style: a car with a separate trunk</td></tr>
+      <tr><td>suv</td><td>Body style: sport utility vehicle (also crossovers)</td></tr>
+      <tr><td>truck</td><td>Body style: pickup truck</td></tr>
+      <tr><td>van</td><td>Body style: van, including minivans</td></tr>
+      <tr><td>coupe</td><td>Body style: two-door car</td></tr>
+      <tr><td>hatchback</td><td>Body style: car with a rear lift-up door</td></tr>
+      <tr><td>unknown</td><td>Used for any field that is not known: color, make, model, body style, flag</td></tr>
+      <tr><td>VIN</td><td>Vehicle identification number. Not stored by the app</td></tr>
+      <tr><td>Year</td><td>Model year. Entered only after a lookup site is marked Verified</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="plates">
+    <h2>Plates</h2>
+    <table class="rows"><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td>XX</td><td>The plate's state is not known. Many imported plates are <code>XX</code> until someone sets the state</td></tr>
+      <tr><td>standard</td><td>Plate type: an ordinary plate</td></tr>
+      <tr><td>dealer</td><td>Plate type: a dealer plate</td></tr>
+      <tr><td>temporary</td><td>Plate type: a temporary plate or paper tag</td></tr>
+      <tr><td>vanity</td><td>Plate type: a personalised plate</td></tr>
+      <tr><td>Plate</td><td>1 to 20 letters and digits. Spaces and dashes are dropped when you type it</td></tr>
+      <tr><td>Alias</td><td>Another plate on the same vehicle (a vehicle can have several)</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="ids">
+    <h2>Ids and keys</h2>
+    <table class="rows"><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td>VEH_xxxxxxxx</td><td>A vehicle key: <code>VEH_</code> and 8 hex characters, for example <code>VEH_7a3f9c2b</code>. Also the record's file name</td></tr>
+      <tr><td>S_xxxxxxxx</td><td>A sighting id: <code>S_</code> and 8 hex characters</td></tr>
+      <tr><td>Plate key</td><td><code>&lt;STATE&gt;-&lt;PLATE&gt;</code>, for example <code>CA-7ABC123</code>, <code>SON-ABC123</code>, <code>GOV-DHS-12345</code>. Split at the last dash</td></tr>
+      <tr><td>Sighting</td><td>One time a vehicle was seen: when, where, flag, notes, photos</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="tools">
+    <h2>Tools and files</h2>
+    <table class="rows"><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td>PWA</td><td>Progressive web app: the app you add to your phone's home screen</td></tr>
+      <tr><td>CSV</td><td>Comma-separated values: a spreadsheet saved as text. The importer reads these</td></tr>
+      <tr><td>XML</td><td>The format of the old plate-tracker exports. The importer reads these</td></tr>
+      <tr><td>JSON</td><td>The format the app stores its records in (<code>data/vehicles</code>, <code>data/plates</code>)</td></tr>
+      <tr><td>ZIP</td><td>What the importer gives you to unpack into the repository</td></tr>
+      <tr><td>GPS</td><td>Device location, used for the Nearby list and for sightings</td></tr>
+      <tr><td>ISO 3166-2</td><td>The standard that names the codes for regions of a country. Mexican states use the part after <code>MX-</code></td></tr>
+      <tr><td>API</td><td>The plate-lookup service the app can ask for a vehicle's make and model</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="time">
+    <h2>Time zones (importer)</h2>
+    <p>Old data writes times like <code>10:00 PST</code>. The importer knows these; add others in its options.</p>
+    <table class="rows"><thead><tr><th>Code</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td>PST / PDT</td><td>Pacific Standard / Daylight Time (UTC−8 / −7)</td></tr>
+      <tr><td>MST / MDT</td><td>Mountain Standard / Daylight Time (UTC−7 / −6)</td></tr>
+      <tr><td>CST / CDT</td><td>Central Standard / Daylight Time (UTC−6 / −5)</td></tr>
+      <tr><td>EST / EDT</td><td>Eastern Standard / Daylight Time (UTC−5 / −4)</td></tr>
+      <tr><td>AKST / AKDT</td><td>Alaska Standard / Daylight Time (UTC−9 / −8)</td></tr>
+      <tr><td>HST</td><td>Hawaii Standard Time (UTC−10)</td></tr>
+      <tr><td>UTC / GMT</td><td>Coordinated Universal Time / Greenwich Mean Time (UTC+0)</td></tr>
+    </tbody></table>
+  </section>
+  <p class="lede" id="empty" hidden>Nothing matches that filter.</p>
+</div>
+
+<script type="module">
+import { STATE_GROUPS, STATE_NAMES } from './js/config.js';
+
+const el = (tag, text) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; return e; };
+const holder = document.getElementById('state-tables');
+holder.textContent = '';
+for (const group of STATE_GROUPS) {
+  holder.appendChild(el('h3', `${group.title} (${group.codes.length})`));
+  const table = el('table'); table.className = 'rows';
+  const head = el('thead'); const hr = el('tr'); hr.append(el('th', 'Code'), el('th', 'Name')); head.appendChild(hr);
+  const body = el('tbody');
+  for (const code of group.codes) {
+    const tr = el('tr'); const name = STATE_NAMES[code] || '';
+    tr.append(el('td', code), el('td', code === 'USG' || code === 'GOV' ? `${name}. May carry a code: ${code}-…` : name));
+    body.appendChild(tr);
+  }
+  table.append(head, body); holder.appendChild(table);
+}
+
+const filter = document.getElementById('filter');
+const apply = () => {
+  const q = filter.value.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('table.rows tbody tr').forEach((tr) => {
+    const hit = !q || tr.textContent.toLowerCase().includes(q);
+    tr.hidden = !hit; if (hit) shown++;
+  });
+  document.querySelectorAll('section').forEach((s) => { s.hidden = !!q && !s.querySelector('tbody tr:not([hidden])'); });
+  document.querySelectorAll('#state-tables h3').forEach((h) => { const t = h.nextElementSibling; h.hidden = !!q && !t.querySelector('tbody tr:not([hidden])'); if (t) t.hidden = h.hidden; });
+  document.getElementById('empty').hidden = shown > 0;
+};
+filter.addEventListener('input', apply);
+</script>
+</body>
+</html>

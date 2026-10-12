@@ -1,0 +1,17 @@
+name = "parkingtracker-lookup"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+REPO_OWNER = "FranklyAbagnale"
+REPO_NAME = "ParkingTracker-Clean"
+ALLOWED_STATES = "CA"
+# Set this to the app's origin once it is known, e.g. "https://franklyabagnale.github.io"
+ALLOWED_ORIGIN = "*"
+# "stub" answers "not configured" until a real adapter is registered in providers/index.js
+PROVIDER = "stub"
+# Provider calls per UTC day per instance (cache hits are free). Empty means no limit.
+DAILY_LIMIT = "200"
+
+# The provider key is a secret, never a var:
+#   npx wrangler secret put PROVIDER_KEY

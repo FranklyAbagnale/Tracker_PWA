@@ -1,0 +1,26 @@
+Parky first-time setup (2 minutes)
+
+1. On your phone open: https://franklyabagnale.github.io/ParkingTracker/
+   (iPhone: use Safari. Android: use Chrome.)
+
+2. Add it to your home screen.
+   iPhone: tap Share, then Add to Home Screen.
+   Android: tap the menu (three dots), then Install app.
+   From now on open Parky from its icon.
+
+3. Sign in. Type your name and the access token I sent you separately, then tap Sign in.
+   Keep the token private. Do not post or forward it.
+
+4. Tap Allow when asked for camera and location.
+
+How to use it
+- Take photo (button at the bottom of every screen): photograph the vehicle, accept each photo, then fill in what you can and Save. Nothing is required: save what you know now, and a teammate can complete the record later (use Share).
+- Navigate: on a record, the green Navigate button opens directions to where it was last seen in your maps app.
+- Plate: type the plate (3 or more characters works) to see if it is already on file. Tap a result to add a sighting, or create a new vehicle if nothing matches.
+- Share (button on a record, and after you save one): sends a link that opens that record for a teammate who is signed in, so they can add details from a computer. Offline? Tap Sync now first.
+- Home list: Nearby shows vehicles near you; Recent shows the newest records without needing location.
+- Nearby list: vehicles seen near you, with flag colour, distance and time.
+- Location pin (top left): green = location on, grey = off. Tap to switch. When it is off, the nearby list uses the last position the app had, and the app only asks about location when you save a record.
+- No signal? Save anyway. It uploads by itself when you are back online. A red dot on the menu (three lines, top right) means something is waiting; open the menu and tap Sync now.
+
+Questions or problems: reply to this message.

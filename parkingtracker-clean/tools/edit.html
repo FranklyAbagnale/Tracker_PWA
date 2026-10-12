@@ -1,0 +1,1733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- No network of any kind: the page can only read and change the folder you pick. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Tracker record editor</title>
+<style>
+  :root { --line:#e2e5ea; --muted:#6b7280; --bg:#f6f7f9; --blue:#1a6fe8; --red:#dc2626; --green:#15803d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:#1f2937; background:var(--bg); }
+  header.top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 16px; background:#1e1b4b; color:#fff; }
+  header.top h1 { margin:0 12px 0 0; font-size:17px; }
+  header.top .spacer { flex:1; }
+  header.top .status { color:#c7d2fe; font-size:13px; }
+  button, select, input, textarea { font:inherit; }
+  button { padding:6px 12px; border:1px solid #c5cad3; border-radius:6px; background:#fff; color:#1f2937; cursor:pointer; }
+  button:hover { background:#f1f3f6; }
+  button.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+  button.primary:hover { background:#155bc0; }
+  button.danger { background:var(--red); border-color:var(--red); color:#fff; }
+  button.danger:hover { background:#b91c1c; }
+  button.warnbtn { color:var(--red); }
+  button.compact { padding:3px 8px; font-size:13px; }
+  button:disabled { opacity:.5; cursor:default; }
+  header.top button { background:#312e81; border-color:#4338ca; color:#fff; }
+  header.top button:hover { background:#4338ca; }
+  input[type=text], input[type=search], input[type=date], select, textarea { padding:6px 8px; border:1px solid #c5cad3; border-radius:6px; background:#fff; }
+  textarea { width:100%; resize:vertical; }
+  [hidden] { display:none !important; }
+  #intro { max-width:780px; margin:40px auto; padding:0 20px; }
+  #intro h2 { margin-top:0; }
+  #intro code, .hint code { background:#e8ebf0; padding:1px 5px; border-radius:4px; }
+  .banner { margin:10px 16px 0; padding:8px 12px; border-radius:6px; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .banner.ok { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
+  .banner.err { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+  .banner pre { margin:6px 0 0; padding:8px; background:#fff; border:1px solid var(--line); border-radius:6px; white-space:pre-wrap; max-height:220px; overflow:auto; }
+  #app { display:grid; grid-template-columns:310px minmax(0,1fr); gap:12px; padding:12px 16px 90px; align-items:start; }
+  aside#facets { position:sticky; top:8px; max-height:calc(100vh - 100px); overflow:auto; padding-right:4px; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:10px; }
+  .panel h3 { margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  #q { width:100%; font-size:15px; padding:9px 10px; }
+  .hint { font-size:12px; color:var(--muted); margin-top:4px; }
+  .dates { display:grid; grid-template-columns:auto 1fr 1fr; gap:4px 6px; align-items:center; font-size:12px; }
+  .dates input { width:100%; padding:4px 6px; }
+  details.facet { border-top:1px solid var(--line); padding:6px 0; }
+  details.facet:first-of-type { border-top:0; }
+  details.facet summary { cursor:pointer; font-weight:600; display:flex; gap:6px; align-items:center; }
+  details.facet summary .n { font-weight:400; color:var(--muted); font-size:12px; }
+  details.facet summary .sel { background:var(--blue); color:#fff; border-radius:9px; padding:0 7px; font-size:11px; font-weight:600; }
+  .fvals { max-height:230px; overflow:auto; margin-top:4px; }
+  .ffilter { width:100%; margin:4px 0; padding:3px 6px; font-size:12px; }
+  .fv { display:flex; align-items:center; gap:6px; padding:2px 4px; border-radius:4px; cursor:pointer; }
+  .fv:hover { background:#f1f3f6; }
+  .fv .t { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fv .c { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .fv.zero { opacity:.45; }
+  main#results { min-width:0; }
+  .tabs { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+  .tabs button { border-radius:8px 8px 0 0; padding:7px 16px; font-weight:600; }
+  .tabs button.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .tabs .n { font-weight:400; opacity:.8; margin-left:4px; font-size:12px; }
+  .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .toolbar .count { font-weight:600; margin-right:6px; }
+  .toolbar .spacer { flex:1; }
+  .chip { padding:3px 10px; border-radius:14px; border:1px solid #c5cad3; background:#fff; cursor:pointer; font-size:13px; }
+  .chip.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .selbar, .actbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:13px; }
+  .selbar .picked { font-weight:700; color:var(--red); }
+  .actbar .grp { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:4px 8px; border:1px solid var(--line); border-radius:8px; background:#fafafa; }
+  .actbar label { font-size:12px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  th, td { text-align:left; padding:7px 9px; border-bottom:1px solid #eef0f3; vertical-align:top; }
+  th { position:sticky; top:0; background:#f3f4f6; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); cursor:pointer; white-space:nowrap; user-select:none; z-index:2; }
+  th.nosort { cursor:default; }
+  th.cb, td.cb { width:34px; }
+  td.cb input { width:17px; height:17px; cursor:pointer; }
+  tbody tr.row { cursor:pointer; }
+  tbody tr.row:hover { background:#f6f9ff; }
+  tbody tr.row.sel { background:#e0e7ff; }
+  tbody tr.row.removed td { text-decoration:line-through; color:#9ca3af; }
+  tbody tr.row.removed td.cb, tbody tr.row.removed td .badge { text-decoration:none; }
+  td.name strong { display:block; }
+  .snip { display:block; color:var(--muted); font-size:12px; margin-top:1px; word-break:break-word; }
+  mark { background:#fde68a; padding:0 1px; border-radius:2px; }
+  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; border:1px solid rgba(0,0,0,.2); vertical-align:-1px; }
+  .dot-confirmed{background:#dc2626}.dot-suspected{background:#f97316}.dot-cleared{background:#16a34a}.dot-unknown{background:#eab308}.dot-pigs{background:#2563eb}
+  .badge { display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:6px; vertical-align:1px; }
+  .badge.changed { background:#fef3c7; color:#92400e; }
+  .badge.removed { background:#fee2e2; color:#991b1b; }
+  .badge.bad { background:#fee2e2; color:#991b1b; }
+  .muted { color:var(--muted); }
+  .more { text-align:center; margin:10px; }
+  #detail { position:fixed; top:0; right:0; bottom:0; width:min(560px,100vw); background:#fff; border-left:1px solid var(--line); box-shadow:-8px 0 24px rgba(0,0,0,.12); overflow:auto; z-index:20; padding:14px 16px 70px; }
+  @media (min-width: 1250px) { body.has-detail #app { margin-right:576px; } }
+  #detail h2 { margin:0 0 2px; font-size:18px; padding-right:70px; }
+  #detail .close { position:absolute; top:10px; right:12px; }
+  #detail h3 { margin:14px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); border-top:1px solid var(--line); padding-top:10px; }
+  #detail label.f { display:block; margin:8px 0 2px; font-size:12px; color:var(--muted); }
+  #detail input[type=text], #detail select { width:100%; }
+  #detail .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #detail .btnrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  #detail textarea.json { font:12px/1.4 ui-monospace,Menlo,Consolas,monospace; min-height:260px; white-space:pre; }
+  #detail .errs { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:6px 10px; border-radius:6px; margin:8px 0; }
+  #detail .thumb { display:inline-block; vertical-align:top; margin:0 8px 8px 0; width:180px; }
+  #detail .thumb img { width:180px; max-height:140px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
+  #detail .thumb .p { font-size:11px; color:var(--muted); word-break:break-all; }
+  #pending { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 16px; background:#fffbeb; border-top:2px solid #f59e0b; }
+  #pending .spacer { flex:1; }
+  #modal { position:fixed; inset:0; z-index:60; background:rgba(15,23,42,.5); display:flex; align-items:center; justify-content:center; }
+  #modal .box { background:#fff; border-radius:10px; padding:18px; width:min(680px,94vw); max-height:88vh; overflow:auto; }
+  #modal h3 { margin:0 0 8px; }
+  #modal ul { margin:6px 0; padding-left:20px; max-height:220px; overflow:auto; }
+  #modal .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+  #modal .warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:6px 10px; border-radius:6px; margin:8px 0; }
+  #modal .sum { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; margin:8px 0; }
+  #modal .sum b { text-align:right; }
+  #modal input[type=text] { width:100%; }
+  progress { width:240px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Tracker record editor</h1>
+  <button id="btn-open" class="primary">Open repo folder…</button>
+  <button id="btn-reopen" hidden>Reopen last folder</button>
+  <button id="btn-reload" hidden title="Re-read the folder, e.g. after git pull">Reload from disk</button>
+  <span class="spacer"></span>
+  <span id="status" class="status"></span>
+</header>
+
+<div id="messages"></div>
+
+<section id="intro">
+  <h2>Pull up any level of the data and change what is in it</h2>
+  <p>Open the folder where you cloned the ParkingTracker repo (the one that contains <code>data/</code> and <code>photos/</code>).
+     Everything runs in this page: it makes no network requests, and it only touches the folder you pick.</p>
+  <ul>
+    <li><b>Four levels</b>: <i>Vehicles</i>, <i>Sightings</i> (every sighting of every vehicle), <i>Plates</i> and <i>Photos</i>. Each has the same search, filters and selection.</li>
+    <li><b>Change</b>: remove records, sightings, plates or photos; clear a location or notes; set a flag, observer, source, plate type or state in bulk. Click a row to edit one record by field or as raw JSON.</li>
+    <li><b>Staged, not written</b>: every change waits in the bar at the bottom. <i>Review &amp; save</i> shows exactly which files change, makes a backup ZIP of the originals, and only then writes. <i>Discard all</i> drops everything.</li>
+    <li>Saving rewrites <code>data/index.json</code>, so after <code>git push</code> no workflow has to run. Removed records stay in git history.</li>
+  </ul>
+  <p id="support" class="muted"></p>
+</section>
+
+<div id="app" hidden>
+  <aside id="facets">
+    <div class="panel">
+      <h3>Search text</h3>
+      <input id="q" type="search" placeholder="Search every field…" autocomplete="off" spellcheck="false">
+      <div class="hint" id="q-hint"></div>
+    </div>
+    <div class="panel">
+      <h3>Dates</h3>
+      <div class="dates">
+        <span></span><span class="muted">from</span><span class="muted">to</span>
+        <span id="first-label">First seen</span><input type="date" id="first-from"><input type="date" id="first-to">
+        <span id="last-label">Last seen</span><input type="date" id="last-from"><input type="date" id="last-to">
+      </div>
+    </div>
+    <div class="panel" id="facet-list"></div>
+  </aside>
+  <main id="results">
+    <div class="tabs" id="tabs"></div>
+    <div class="toolbar">
+      <span class="count" id="count"></span>
+      <button id="btn-clear">Clear filters</button>
+      <span class="spacer"></span>
+      <button id="btn-csv" title="Download the matching rows as a CSV">Download list (CSV)</button>
+    </div>
+    <div class="panel selbar" id="selbar"></div>
+    <div class="panel actbar" id="actbar"></div>
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="more" id="more"></div>
+  </main>
+</div>
+
+<aside id="detail" hidden></aside>
+<div id="pending" hidden></div>
+<div id="modal" hidden></div>
+
+<script>
+'use strict';
+
+// ====================== constants (kept in sync with web/js/config.js and schema/) ======================
+const FLAGS = ['unknown', 'suspected', 'confirmed', 'cleared', 'pigs'];
+const BODY_STYLES = ['sedan', 'suv', 'truck', 'van', 'coupe', 'hatchback', 'unknown'];
+const PLATE_TYPES = ['standard', 'dealer', 'temporary', 'vanity'];
+const SITE_STATUSES = ['verified', 'not_found', 'wrong'];
+const STATES = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'AS', 'GU', 'MP', 'PR', 'VI', 'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT', 'AGU', 'BCN', 'BCS', 'CAM', 'CHP', 'CHH', 'CMX', 'COA', 'COL', 'DUR', 'GUA', 'GRO', 'HID', 'JAL', 'MEX', 'MIC', 'MOR', 'NAY', 'NLE', 'OAX', 'PUE', 'QUE', 'ROO', 'SLP', 'SIN', 'SON', 'TAB', 'TAM', 'TLA', 'VER', 'YUC', 'ZAC', 'USG', 'GOV', 'XX'];
+const FEDERAL = ['USG', 'GOV'];
+const STATE_LABELS = { AGU: 'Aguascalientes', BCN: 'Baja California', BCS: 'Baja California Sur', CAM: 'Campeche', CHP: 'Chiapas', CHH: 'Chihuahua', CMX: 'Ciudad de México', COA: 'Coahuila', COL: 'Colima', DUR: 'Durango', GUA: 'Guanajuato', GRO: 'Guerrero', HID: 'Hidalgo', JAL: 'Jalisco', MEX: 'Estado de México', MIC: 'Michoacán', MOR: 'Morelos', NAY: 'Nayarit', NLE: 'Nuevo León', OAX: 'Oaxaca', PUE: 'Puebla', QUE: 'Querétaro', ROO: 'Quintana Roo', SLP: 'San Luis Potosí', SIN: 'Sinaloa', SON: 'Sonora', TAB: 'Tabasco', TAM: 'Tamaulipas', TLA: 'Tlaxcala', VER: 'Veracruz', YUC: 'Yucatán', ZAC: 'Zacatecas', USG: 'US Government (federal)', GOV: 'Government' };
+const stateName = (c) => (c === 'XX' ? 'XX (unknown)' : STATE_LABELS[c] ? `${c} · ${STATE_LABELS[c]}` : c);
+const stateOpts = (selected) => STATES.map((c) => `<option value="${c}"${c === selected ? ' selected' : ''}>${stateName(c)}</option>`).join('');
+const splitAlias = (a) => { const i = String(a).lastIndexOf('-'); return i < 0 ? ['', a] : [a.slice(0, i), a.slice(i + 1)]; }; // the plate has no dash
+const isState = (s) => STATES.includes(s) || /^(?:USG|GOV)-[A-Z0-9]{1,8}$/.test(s);
+const stateParts = (s) => { const i = String(s).indexOf('-'); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i + 1)]; };
+const PAGE = 200;
+const ALIAS_RE = /^(?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]{1,20}$/;
+const VEHICLE_ALLOWED = ['vehicleKey','displayName','color','make','model','year','bodyStyle','distinguishing','distinguishingNotes','vin','plateAliases','flag','sightings','firstSeen','lastSeen','plateLookup','possibleDuplicate','lastUpdatedBy','siteChecks','editedAt'];
+const VEHICLE_REQUIRED = ['vehicleKey','displayName','color','make','bodyStyle','distinguishing','plateAliases','flag','sightings','firstSeen','lastSeen'];
+const SIGHTING_ALLOWED = ['id','timestamp','recordedAt','editedAt','location','photos','flag','notes','source','observer'];
+const PHOTO_RE = /^photos\/[A-Za-z0-9_.-]+\.jpg$/;
+const SIGHT_BUCKETS = ['1', '2-3', '4-9', '10+'];
+const EDITOR = 'desktop-tool';
+
+// ====================== small helpers ======================
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clean = (s) => String(s ?? '').trim().replace(/\s+/g, ' ');
+const NONE = '(none)';
+const ser = (obj) => `${JSON.stringify(obj, null, 2)}\n`;
+const tsOf = (v) => { const t = Date.parse(v); return Number.isFinite(t) ? t : 0; };
+const day = (v) => (v ? String(v).slice(0, 10) : '');
+const tidyWord = (v) => { const t = clean(v); return t && t === t.toLowerCase() ? t.charAt(0).toUpperCase() + t.slice(1) : t; };
+const buildDisplayName = (color, make, model) => [tidyWord(color), tidyWord(make), tidyWord(model)].filter(Boolean).join(' ');
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const nowIso = () => new Date().toISOString();
+const stamp = () => nowIso().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+const aliasOf = (state, num) => `${state}-${String(num).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+const clone = (x) => JSON.parse(JSON.stringify(x));
+function setStatus(text) { $('status').textContent = text || ''; }
+function banner(html, kind = '', sticky = false) {
+  const div = document.createElement('div');
+  div.className = `banner ${kind}`;
+  div.innerHTML = html;
+  const box = $('messages');
+  if (!sticky) box.textContent = '';
+  box.appendChild(div);
+  return div;
+}
+function clearBanners() { $('messages').textContent = ''; }
+function showModal(html) { const m = $('modal'); m.innerHTML = `<div class="box">${html}</div>`; m.hidden = false; }
+function hideModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
+function located(s) { return s.location && typeof s.location === 'object' && Number.isFinite(s.location.lat) && Number.isFinite(s.location.lng); }
+
+// ====================== tiny IndexedDB key-value store (remembers the folder) ======================
+const idb = {
+  open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('tracker-edit-tool', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async get(key) {
+    try {
+      const db = await this.open();
+      return await new Promise((resolve, reject) => { const r = db.transaction('kv').objectStore('kv').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+    } catch { return undefined; }
+  },
+  async set(key, value) {
+    try {
+      const db = await this.open();
+      await new Promise((resolve, reject) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(value, key); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+      return true;
+    } catch { return false; }
+  }
+};
+
+// ====================== file system layer ======================
+async function sub(dir, path, create = false) {
+  let d = dir;
+  for (const part of path.split('/').filter(Boolean)) d = await d.getDirectoryHandle(part, { create });
+  return d;
+}
+async function listFiles(dir) {
+  const out = [];
+  for await (const entry of dir.values()) if (entry.kind === 'file') out.push(entry);
+  return out;
+}
+const readText = async (fh) => (await fh.getFile()).text();
+async function writeText(dir, name, text) {
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(text);
+  await w.close();
+}
+async function inBatches(items, size, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) out.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+  return out;
+}
+async function photoFile(path) {
+  const dir = await sub(root, path.split('/').slice(0, -1).join('/'));
+  return (await dir.getFileHandle(path.split('/').pop())).getFile();
+}
+async function readPhotoBytes(path) { try { return new Uint8Array(await (await photoFile(path)).arrayBuffer()); } catch { return null; } }
+
+// ====================== ZIP writer (stored, no compression) ======================
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function makeZip(files, now = new Date()) {
+  const enc = new TextEncoder(); const parts = []; const central = []; let offset = 0;
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosDate = (Math.max(0, now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  for (const path of Array.from(files.keys()).sort()) {
+    const data = typeof files.get(path) === 'string' ? enc.encode(files.get(path)) : files.get(path);
+    const name = enc.encode(path); const crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true); local.setUint16(8, 0, true);
+    local.setUint16(10, dosTime, true); local.setUint16(12, dosDate, true); local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true); local.setUint32(22, data.length, true); local.setUint16(26, name.length, true); local.setUint16(28, 0, true);
+    parts.push(new Uint8Array(local.buffer), name, data);
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true); cd.setUint16(10, 0, true);
+    cd.setUint16(12, dosTime, true); cd.setUint16(14, dosDate, true); cd.setUint32(16, crc, true);
+    cd.setUint32(20, data.length, true); cd.setUint32(24, data.length, true); cd.setUint16(28, name.length, true);
+    cd.setUint32(42, offset, true);
+    central.push(new Uint8Array(cd.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((n, p) => n + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.size, true); end.setUint16(10, files.size, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+const csvCell = (x) => { const s = String(x ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const csvLine = (cells) => cells.map(csvCell).join(',');
+
+// ====================== state ======================
+let root = null;               // FileSystemDirectoryHandle of the repo clone
+let folderName = '';
+let vDir = null, pDir = null, dataDir = null;
+const recs = new Map();        // vehicleKey -> { key, v (working copy), orig (text on disk), deleted, d }
+const plates = new Map();      // alias -> { p (working copy), orig (text on disk or null for new), deleted }
+const photoFiles = new Set();  // photos/<name>.jpg present on disk
+const photoDeletes = new Set();// photo files staged for deletion
+let indexText = '';
+let baseErrors = new Set();    // validation errors that were already there at load
+let rev = 0;                   // bumped by every change, so cached rows are rebuilt
+const changeLog = [];          // plain-text list of what was staged, for the review and the backup
+
+const LEVELS = [['vehicles', 'Vehicles'], ['sightings', 'Sightings'], ['plates', 'Plates'], ['photos', 'Photos']];
+const DEFAULT_SORT = { vehicles: 'last', sightings: 'date', plates: 'plate', photos: 'path' };
+const L = {};
+for (const [id] of LEVELS) L[id] = { q: '', facets: {}, facetFilter: {}, firstFrom: '', firstTo: '', lastFrom: '', lastTo: '', sortKey: DEFAULT_SORT[id], sortDir: id === 'vehicles' || id === 'sightings' ? -1 : 1, limit: PAGE, only: false, sel: new Set(), expanded: new Set(), openFacets: new Set(), lastClicked: null };
+let level = 'vehicles';
+const S = () => L[level];
+let filtered = [];
+let lastCounts = {};
+let lastTokens = [];
+let detailRef = null;          // { level, id } of the open detail drawer
+const detailUrls = [];
+
+// ====================== derived data ======================
+function derive(rec) {
+  const v = rec.v;
+  const sightings = Array.isArray(v.sightings) ? v.sightings : [];
+  const aliases = Array.isArray(v.plateAliases) ? v.plateAliases : [];
+  const states = [...new Set(aliases.map((a) => splitAlias(a)[0]).filter(Boolean))];
+  const ptypes = [...new Set(aliases.map((a) => plates.get(a)?.p?.plateType).filter(Boolean))];
+  const uniq = (arr) => [...new Set(arr.filter((x) => x !== null && x !== undefined && String(x).trim() !== ''))];
+  const observers = uniq(sightings.map((s) => s.observer));
+  const sources = uniq(sightings.map((s) => String(s.source ?? '').split(':')[0]));
+  const notes = sightings.map((s) => s.notes || '').filter(Boolean).join('\n');
+  const photos = sightings.flatMap((s) => (Array.isArray(s.photos) ? s.photos : []));
+  const d = {
+    name: v.displayName || '', color: v.color || '', make: v.make || '', model: v.model || '',
+    year: v.year ? String(v.year) : '', body: v.bodyStyle || '', flag: v.flag || 'unknown',
+    plates: aliases, states, ptypes, feats: Array.isArray(v.distinguishing) ? v.distinguishing : [],
+    fnotes: v.distinguishingNotes || '', notes, nSight: sightings.length, photos, nPhoto: photos.length,
+    first: v.firstSeen || '', last: v.lastSeen || '', observers, sources, by: v.lastUpdatedBy || '',
+    hasLoc: sightings.some(located), dup: Boolean(v.possibleDuplicate)
+  };
+  d.bucket = d.nSight <= 1 ? '1' : d.nSight <= 3 ? '2-3' : d.nSight <= 9 ? '4-9' : '10+';
+  d.f = {
+    name: d.name, color: d.color, make: d.make, model: d.model, year: d.year, body: d.body, flag: d.flag,
+    plate: aliases.join(' '), state: states.join(' '), notes, features: `${d.feats.join(' ')} ${d.fnotes}`,
+    observer: observers.join(' '), source: sources.join(' '), by: d.by, key: rec.key, type: ptypes.join(' ')
+  };
+  for (const k of Object.keys(d.f)) d.f[k] = String(d.f[k]).toLowerCase();
+  d.f.feature = d.f.features;
+  d.f.bodystyle = d.f.body;
+  d.hay = Object.entries(d.f).filter(([k]) => !['feature', 'bodystyle', 'type', 'state'].includes(k)).map(([, x]) => x).join('\n');
+  rec.d = d;
+}
+function changed() { rev++; }
+function recPending(rec) { return rec.deleted ? 'removed' : ser(rec.v) !== rec.orig ? 'changed' : 'unchanged'; }
+function platePending(pl) { return pl.deleted ? (pl.orig === null ? 'unchanged' : 'removed') : (pl.orig === null || ser(pl.p) !== pl.orig) ? 'changed' : 'unchanged'; }
+
+// ====================== validation (mirrors scripts/validate_records.py and schema/) ======================
+function validateVehicle(v, key) {
+  const e = [];
+  const isStr = (x) => typeof x === 'string';
+  const nullableStr = (x) => x === null || x === undefined || isStr(x);
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return ['record is not an object'];
+  for (const k of VEHICLE_REQUIRED) if (!(k in v)) e.push(`missing required field "${k}"`);
+  for (const k of Object.keys(v)) if (!VEHICLE_ALLOWED.includes(k)) e.push(`unknown field "${k}"`);
+  if (!/^VEH_[0-9a-f]{8}$/.test(v.vehicleKey || '')) e.push('vehicleKey must look like VEH_ + 8 hex characters');
+  if (key && v.vehicleKey !== key) e.push('vehicleKey does not match the file name');
+  for (const k of ['displayName', 'color', 'make']) if (!isStr(v[k]) || !v[k].trim()) e.push(`${k} must not be empty`);
+  if (!nullableStr(v.model)) e.push('model must be text or empty');
+  if (v.year !== null && v.year !== undefined && !(Number.isInteger(v.year) && v.year >= 1900 && v.year <= 2100)) e.push('year must be a whole number from 1900 to 2100, or empty');
+  if (!BODY_STYLES.includes(v.bodyStyle)) e.push(`body style must be one of ${BODY_STYLES.join(', ')}`);
+  if (!FLAGS.includes(v.flag)) e.push(`flag must be one of ${FLAGS.join(', ')}`);
+  if (!Array.isArray(v.distinguishing) || v.distinguishing.some((x) => !isStr(x) || !x.trim())) e.push('features must be a list of non-empty text');
+  if (!nullableStr(v.distinguishingNotes)) e.push('feature notes must be text or empty');
+  if (!nullableStr(v.vin)) e.push('vin must be text or empty');
+  if (!Array.isArray(v.plateAliases)) e.push('plateAliases must be a list');
+  else {
+    if (v.plateAliases.some((a) => !ALIAS_RE.test(a))) e.push('every plate must look like ST-ABC123 (state, dash, up to 20 letters/digits)');
+    if (new Set(v.plateAliases).size !== v.plateAliases.length) e.push('a plate is listed twice');
+  }
+  for (const k of ['firstSeen', 'lastSeen']) if (!isStr(v[k]) || Number.isNaN(Date.parse(v[k]))) e.push(`${k} must be a date-time`);
+  if (v.possibleDuplicate !== undefined && typeof v.possibleDuplicate !== 'boolean') e.push('possibleDuplicate must be true or false');
+  if (v.lastUpdatedBy !== undefined && v.lastUpdatedBy !== null && (!isStr(v.lastUpdatedBy) || v.lastUpdatedBy.length > 40)) e.push('lastUpdatedBy must be text of at most 40 characters');
+  if (v.siteChecks !== undefined) {
+    if (!v.siteChecks || typeof v.siteChecks !== 'object') e.push('siteChecks must be an object');
+    else for (const [site, c] of Object.entries(v.siteChecks)) {
+      if (!/^[a-z]{2,20}$/.test(site)) e.push(`siteChecks name "${site}" is not allowed`);
+      if (!c || !SITE_STATUSES.includes(c.status) || !isStr(c.checkedAt)) e.push(`siteChecks.${site} needs a status and checkedAt`);
+    }
+  }
+  if (!Array.isArray(v.sightings) || v.sightings.length < 1) e.push('at least one sighting is required');
+  else {
+    const ids = v.sightings.map((s) => s && s.id);
+    if (new Set(ids).size !== ids.length) e.push('two sightings share an id');
+    v.sightings.forEach((s, i) => {
+      const at = `sighting ${i + 1}`;
+      if (!s || typeof s !== 'object' || Array.isArray(s)) { e.push(`${at}: not an object`); return; }
+      for (const k of ['id', 'timestamp', 'photos', 'flag']) if (!(k in s)) e.push(`${at}: missing "${k}"`);
+      for (const k of Object.keys(s)) if (!SIGHTING_ALLOWED.includes(k)) e.push(`${at}: unknown field "${k}"`);
+      if (!/^S_[0-9a-f]{8}$/.test(s.id || '')) e.push(`${at}: id must look like S_ + 8 hex characters`);
+      if (!isStr(s.timestamp) || Number.isNaN(Date.parse(s.timestamp))) e.push(`${at}: timestamp must be a date-time`);
+      if (!FLAGS.includes(s.flag)) e.push(`${at}: flag must be one of ${FLAGS.join(', ')}`);
+      if (!Array.isArray(s.photos) || s.photos.some((p) => !PHOTO_RE.test(p))) e.push(`${at}: photos must be photos/<name>.jpg paths`);
+      if (!nullableStr(s.notes) || !nullableStr(s.source)) e.push(`${at}: notes and source must be text or empty`);
+      if (s.observer !== undefined && s.observer !== null && (!isStr(s.observer) || s.observer.length > 40)) e.push(`${at}: observer must be at most 40 characters`);
+      if (s.location !== undefined && s.location !== null) {
+        const l = s.location;
+        if (typeof l !== 'object' || !Number.isFinite(l.lat) || !Number.isFinite(l.lng) || l.lat < -90 || l.lat > 90 || l.lng < -180 || l.lng > 180) e.push(`${at}: location needs lat -90..90 and lng -180..180`);
+      }
+    });
+  }
+  return e;
+}
+function validatePlate(p, alias) {
+  const e = [];
+  const keys = ['plate', 'plateState', 'plateType', 'currentVehicleKey', 'firstSeen', 'updated'];
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return ['plate record is not an object'];
+  for (const k of keys) if (!(k in p)) e.push(`missing "${k}"`);
+  for (const k of Object.keys(p)) if (!keys.includes(k)) e.push(`unknown field "${k}"`);
+  if (!/^[A-Z0-9]{1,20}$/.test(p.plate || '')) e.push('plate must be 1-20 letters/digits');
+  if (!isState(p.plateState || '')) e.push('plateState must be a state or province code (CA), a Mexican state (SON), USG / GOV with an optional code (GOV-DHS) or XX');
+  if (!PLATE_TYPES.includes(p.plateType)) e.push(`plateType must be one of ${PLATE_TYPES.join(', ')}`);
+  if (!/^VEH_[0-9a-f]{8}$/.test(p.currentVehicleKey || '')) e.push('currentVehicleKey is malformed');
+  if (alias && `${p.plateState}-${p.plate}` !== alias) e.push('plateState + plate does not match the file name');
+  return e;
+}
+
+// ====================== the effective result of everything staged (used by validation, review and save) ======================
+// Vehicles marked removed disappear; plate files they owned are deleted, or re-pointed when a vehicle that stays also lists them.
+function effective(deletePhotosOfRemovedVehicles = true) {
+  const vehicles = new Map([...recs].filter(([, r]) => !r.deleted));
+  const removedRecs = [...recs.values()].filter((r) => r.deleted);
+  const listedBy = new Map();
+  for (const r of vehicles.values()) for (const a of r.v.plateAliases || []) if (!listedBy.has(a)) listedBy.set(a, r.key);
+  const plateOut = new Map();            // alias -> plate object that will exist (absent = no file)
+  const plateActions = [];               // { alias, action: 'write'|'delete'|'repoint', pl }
+  for (const [alias, pl] of plates) {
+    if (pl.deleted) { if (pl.orig !== null) plateActions.push({ alias, action: 'delete', pl }); continue; }
+    const owner = pl.p.currentVehicleKey;
+    if (recs.has(owner) && recs.get(owner).deleted) {
+      const heir = listedBy.get(alias);
+      if (heir) { const p = { ...pl.p, currentVehicleKey: heir }; plateOut.set(alias, p); plateActions.push({ alias, action: 'repoint', pl, p }); }
+      else if (pl.orig !== null) plateActions.push({ alias, action: 'delete', pl });
+      continue;
+    }
+    plateOut.set(alias, pl.p);
+    if (platePending(pl) === 'changed') plateActions.push({ alias, action: 'write', pl, p: pl.p });
+  }
+  const stillUsed = new Set();
+  for (const r of vehicles.values()) for (const s of r.v.sightings || []) for (const p of s.photos || []) stillUsed.add(p);
+  const wanted = new Set(photoDeletes);
+  if (deletePhotosOfRemovedVehicles) for (const r of removedRecs) for (const s of r.v.sightings || []) for (const p of s.photos || []) wanted.add(p);
+  const photoOut = [...wanted].filter((p) => !stillUsed.has(p)).sort();
+  const photoKept = [...wanted].filter((p) => stillUsed.has(p)).sort();
+  return { vehicles, removedRecs, plateOut, plateActions, photoOut, photoKept };
+}
+
+function validateEffective(eff) {
+  const errors = [];
+  for (const r of eff.vehicles.values()) {
+    if (recPending(r) === 'unchanged') continue;
+    for (const m of validateVehicle(r.v, r.key)) errors.push(`vehicles/${r.key}: ${m}`);
+  }
+  for (const [alias, p] of eff.plateOut) {
+    const pl = plates.get(alias);
+    if (pl && platePending(pl) === 'changed') for (const m of validatePlate(p, alias)) errors.push(`plates/${alias}: ${m}`);
+    const owner = eff.vehicles.get(p.currentVehicleKey);
+    if (!owner) errors.push(`plates/${alias}: points at missing vehicle ${p.currentVehicleKey}`);
+    else if (!(owner.v.plateAliases || []).includes(alias)) errors.push(`plates/${alias}: ${owner.key} does not list it in plateAliases`);
+  }
+  return errors;
+}
+function newErrors(eff) { return validateEffective(eff).filter((e) => !baseErrors.has(e)); }
+
+// ====================== index.json (same content scripts/build_index.py writes) ======================
+function searchFields(v) {
+  const out = {};
+  for (const k of ['color', 'make', 'model', 'bodyStyle']) if (typeof v[k] === 'string' && v[k] && v[k] !== 'unknown') out[k] = v[k];
+  if (Number.isInteger(v.year)) out.year = v.year;
+  const feats = (v.distinguishing || []).filter((f) => f && f !== 'unknown');
+  if (feats.length) out.features = feats;
+  return out;
+}
+function indexEntry(v) {
+  let latest = null;
+  for (const s of v.sightings || []) if (located(s) && (!latest || tsOf(s.timestamp) > tsOf(latest.timestamp))) latest = s;
+  return {
+    vehicleKey: v.vehicleKey, displayName: v.displayName ?? '', flag: v.flag ?? 'unknown', lastSeen: v.lastSeen ?? null,
+    location: latest ? { lat: latest.location.lat, lng: latest.location.lng } : null, plateAliases: v.plateAliases ?? [], ...searchFields(v)
+  };
+}
+function buildIndexText(vehicles) {
+  const entries = [...vehicles.values()].map((r) => indexEntry(r.v)).sort((a, b) => (a.vehicleKey < b.vehicleKey ? -1 : a.vehicleKey > b.vehicleKey ? 1 : 0));
+  return ser(entries);
+}
+
+// ====================== loading ======================
+async function openFolder(handle) {
+  root = handle;
+  folderName = handle.name || 'repo';
+  try { vDir = await sub(root, 'data/vehicles'); dataDir = await sub(root, 'data'); } catch {
+    banner('That folder has no <code>data/vehicles</code>. Pick the top folder of the repo clone.', 'err');
+    root = null;
+    return;
+  }
+  try { pDir = await sub(root, 'data/plates'); } catch { pDir = null; }
+  idb.set('lastHandle', handle);
+  await reload(true);
+}
+
+function hasPending() { return dirtySummary().total > 0; }
+
+async function reload(first = false) {
+  if (!root) return;
+  if (!first && hasPending() && !confirm('You have staged changes. Reload from disk and lose them?')) return;
+  clearBanners();
+  setStatus('Reading files…');
+  const prog = document.createElement('progress');
+  $('status').appendChild(prog);
+  try {
+    const vFiles = (await listFiles(vDir)).filter((f) => f.name.endsWith('.json'));
+    const pFiles = pDir ? (await listFiles(pDir)).filter((f) => f.name.endsWith('.json')) : [];
+    let photoList = [];
+    try { photoList = (await listFiles(await sub(root, 'photos'))).filter((f) => /\.jpg$/i.test(f.name)); } catch { photoList = []; }
+    let done = 0;
+    const total = vFiles.length + pFiles.length;
+    const tick = () => { done++; if (done % 100 === 0) { prog.max = total; prog.value = done; } };
+    recs.clear(); plates.clear(); photoFiles.clear(); photoDeletes.clear(); changeLog.length = 0; rev++;
+    for (const [id] of LEVELS) { L[id].sel.clear(); L[id].expanded.clear(); L[id].lastClicked = null; L[id].only = false; }
+    detailRef = null; rowCache.clear();
+    const bad = [];
+    const vRead = await inBatches(vFiles, 64, async (fh) => { const text = await readText(fh); tick(); return { name: fh.name, text }; });
+    const pRead = await inBatches(pFiles, 64, async (fh) => { const text = await readText(fh); tick(); return { name: fh.name, text }; });
+    for (const f of pRead) {
+      try { plates.set(f.name.replace(/\.json$/, ''), { p: JSON.parse(f.text), orig: f.text, deleted: false }); } catch (err) { bad.push(`data/plates/${f.name}: ${err.message}`); }
+    }
+    for (const f of vRead) {
+      try {
+        const v = JSON.parse(f.text);
+        const key = f.name.replace(/\.json$/, '');
+        recs.set(key, { key, v, orig: f.text, deleted: false, d: null });
+      } catch (err) { bad.push(`data/vehicles/${f.name}: ${err.message}`); }
+    }
+    for (const f of photoList) photoFiles.add(`photos/${f.name}`);
+    try { indexText = await readText(await dataDir.getFileHandle('index.json')); } catch { indexText = ''; }
+    for (const rec of recs.values()) derive(rec);
+    for (const [id] of LEVELS) L[id].openFacets = new Set(id === 'vehicles' ? ['flag'] : id === 'photos' ? ['status'] : id === 'plates' ? ['state'] : ['flag']);
+    baseErrors = new Set(validateEffective(effective()));
+    if (bad.length) banner(`<b>${bad.length} file(s) could not be read and are not shown:</b><pre>${esc(bad.slice(0, 20).join('\n'))}</pre>`, 'err', true);
+    if (baseErrors.size) banner(`${plural(baseErrors.size, 'problem')} already in these files (they do not block saving, but are not caused by your edits):<pre>${esc([...baseErrors].slice(0, 12).join('\n'))}</pre>`, '', true);
+  } catch (err) {
+    banner(`Could not read the folder: ${esc(err.message)}`, 'err');
+    setStatus('');
+    return;
+  }
+  $('intro').hidden = true;
+  $('app').hidden = false;
+  $('btn-reload').hidden = false;
+  closeDetail();
+  setStatus(`${plural(recs.size, 'vehicle')}, ${plural(plates.size, 'plate')}, ${plural(photoFiles.size, 'photo')} in “${folderName}”`);
+  syncInputs();
+  renderAll(true);
+  renderPending();
+}
+
+// ====================== rows for each level ======================
+const rowCache = new Map();    // level -> { rev, rows }
+function rowsFor(lv) {
+  const c = rowCache.get(lv);
+  if (c && c.rev === rev) return c.rows;
+  const rows = BUILD[lv]();
+  rowCache.set(lv, { rev, rows });
+  return rows;
+}
+const lc = (x) => String(x ?? '').toLowerCase();
+function mkRow(id, f, extra) {
+  for (const k of Object.keys(f)) f[k] = lc(f[k]);
+  return { id, f, hay: Object.values(f).join('\n'), ...extra };
+}
+
+const BUILD = {
+  vehicles() {
+    return [...recs.values()].map((rec) => {
+      const d = rec.d;
+      return { id: rec.key, rec, f: d.f, hay: d.hay, first: d.first, last: d.last, pend: recPending(rec) };
+    });
+  },
+  sightings() {
+    const out = [];
+    for (const rec of recs.values()) {
+      const d = rec.d;
+      (rec.v.sightings || []).forEach((s, i) => {
+        const loc = located(s) ? `${s.location.lat}, ${s.location.lng}` : '';
+        const f = {
+          name: d.name, key: rec.key, id: s.id, plate: d.plates.join(' '), make: d.make, color: d.color, model: d.model,
+          notes: s.notes || '', observer: s.observer || '', source: s.source || '', flag: s.flag || '', date: s.timestamp || '',
+          photo: (s.photos || []).join(' '), vflag: d.flag
+        };
+        const row = mkRow(`${rec.key}#${s.id}`, f, { rec, s, i, first: s.timestamp || '', last: s.timestamp || '', loc, pend: rec.deleted ? 'removed' : recPending(rec) });
+        out.push(row);
+      });
+    }
+    return out;
+  },
+  plates() {
+    const out = [];
+    const listed = new Set();
+    for (const rec of recs.values()) for (const a of rec.v.plateAliases || []) listed.add(a);
+    for (const [alias, pl] of plates) {
+      const ownerRec = recs.get(pl.p.currentVehicleKey);
+      const [st, num] = splitAlias(alias);
+      let status = 'ok';
+      if (!ownerRec) status = 'owner vehicle missing';
+      else if (!(ownerRec.v.plateAliases || []).includes(alias)) status = 'owner does not list it';
+      const f = { plate: alias, number: num, state: st, type: pl.p.plateType || '', key: pl.p.currentVehicleKey || '', name: ownerRec ? ownerRec.d.name : '', status };
+      out.push(mkRow(alias, f, { alias, pl, rec: ownerRec || null, first: pl.p.firstSeen || '', last: pl.p.updated || '', status, pend: platePending(pl) === 'unchanged' && ownerRec && ownerRec.deleted ? 'removed' : platePending(pl) }));
+    }
+    for (const rec of recs.values()) for (const a of rec.v.plateAliases || []) {
+      if (plates.has(a)) continue;
+      const [st, num] = splitAlias(a);
+      out.push(mkRow(a, { plate: a, number: num, state: st, type: '', key: rec.key, name: rec.d.name, status: 'no plate file' }, { alias: a, pl: null, rec, first: '', last: '', status: 'no plate file', pend: rec.deleted ? 'removed' : recPending(rec) }));
+    }
+    return out;
+  },
+  photos() {
+    const refs = new Map();
+    for (const rec of recs.values()) (rec.v.sightings || []).forEach((s) => (s.photos || []).forEach((p) => {
+      if (!refs.has(p)) refs.set(p, []);
+      refs.get(p).push({ rec, s });
+    }));
+    const paths = new Set([...refs.keys(), ...photoFiles]);
+    const out = [];
+    for (const path of paths) {
+      const r = refs.get(path) || [];
+      const exists = photoFiles.has(path);
+      const status = !exists ? 'missing file' : r.length ? 'ok' : 'unreferenced';
+      const used = r.map((x) => `${x.rec.d.name} ${day(x.s.timestamp)}`).join('; ');
+      const last = r.reduce((m, x) => (tsOf(x.s.timestamp) > tsOf(m) ? x.s.timestamp : m), '');
+      const pend = photoDeletes.has(path) ? 'removed' : r.some((x) => x.rec.deleted) ? 'removed' : 'unchanged';
+      out.push(mkRow(path, { path, photo: path, status, key: r.map((x) => x.rec.key).join(' '), name: used, vflag: r.map((x) => x.rec.d.flag).join(' ') },
+        { path, refs: r, exists, status, first: last, last, pend }));
+    }
+    return out;
+  }
+};
+
+// ====================== facets, fields, columns per level ======================
+const yesno = (b) => (b ? 'yes' : 'no');
+const PEND = { id: 'pend', label: 'Staged change', get: (r) => [r.pend === 'unchanged' ? 'none' : r.pend] };
+const FACETS = {
+  vehicles: [
+    { id: 'flag', label: 'Flag', get: (r) => [r.rec.d.flag] },
+    { id: 'body', label: 'Body style', get: (r) => [r.rec.d.body] },
+    { id: 'color', label: 'Color', get: (r) => [r.rec.d.color] },
+    { id: 'make', label: 'Make', get: (r) => [r.rec.d.make] },
+    { id: 'model', label: 'Model', get: (r) => [r.rec.d.model] },
+    { id: 'year', label: 'Year', get: (r) => [r.rec.d.year] },
+    { id: 'state', label: 'Plate state', get: (r) => r.rec.d.states },
+    { id: 'ptype', label: 'Plate type', get: (r) => r.rec.d.ptypes },
+    { id: 'sight', label: 'Number of sightings', get: (r) => [r.rec.d.bucket] },
+    { id: 'observer', label: 'Observer', get: (r) => r.rec.d.observers },
+    { id: 'source', label: 'Source', get: (r) => r.rec.d.sources },
+    { id: 'by', label: 'Last updated by', get: (r) => [r.rec.d.by] },
+    { id: 'dup', label: 'Possible duplicate', get: (r) => [yesno(r.rec.d.dup)] },
+    { id: 'plated', label: 'Has a plate', get: (r) => [yesno(r.rec.d.plates.length)] },
+    { id: 'photos', label: 'Has photos', get: (r) => [yesno(r.rec.d.nPhoto)] },
+    { id: 'loc', label: 'Has a location', get: (r) => [yesno(r.rec.d.hasLoc)] },
+    PEND
+  ],
+  sightings: [
+    { id: 'flag', label: 'Sighting flag', get: (r) => [r.s.flag] },
+    { id: 'observer', label: 'Observer', get: (r) => [r.s.observer] },
+    { id: 'source', label: 'Source', get: (r) => [String(r.s.source ?? '').split(':')[0]] },
+    { id: 'loc', label: 'Has a location', get: (r) => [yesno(located(r.s))] },
+    { id: 'photos', label: 'Has photos', get: (r) => [yesno((r.s.photos || []).length)] },
+    { id: 'notes', label: 'Has notes', get: (r) => [yesno(r.s.notes)] },
+    { id: 'month', label: 'Month', get: (r) => [String(r.s.timestamp || '').slice(0, 7)] },
+    { id: 'vflag', label: 'Vehicle flag', get: (r) => [r.rec.d.flag] },
+    { id: 'make', label: 'Vehicle make', get: (r) => [r.rec.d.make] },
+    { id: 'body', label: 'Vehicle body style', get: (r) => [r.rec.d.body] },
+    { id: 'state', label: 'Vehicle plate state', get: (r) => r.rec.d.states },
+    { id: 'only', label: 'Vehicle has only this sighting', get: (r) => [yesno(r.rec.d.nSight === 1)] },
+    PEND
+  ],
+  plates: [
+    { id: 'state', label: 'State', get: (r) => [splitAlias(r.alias)[0]] },
+    { id: 'type', label: 'Plate type', get: (r) => [r.pl ? r.pl.p.plateType : ''] },
+    { id: 'status', label: 'Status', get: (r) => [r.status] },
+    { id: 'vflag', label: 'Vehicle flag', get: (r) => [r.rec ? r.rec.d.flag : ''] },
+    { id: 'make', label: 'Vehicle make', get: (r) => [r.rec ? r.rec.d.make : ''] },
+    { id: 'nplates', label: 'Vehicle has several plates', get: (r) => [r.rec ? yesno(r.rec.d.plates.length > 1) : ''] },
+    PEND
+  ],
+  photos: [
+    { id: 'status', label: 'Status', get: (r) => [r.status] },
+    { id: 'shared', label: 'Used by several sightings', get: (r) => [yesno(r.refs.length > 1)] },
+    { id: 'vflag', label: 'Vehicle flag', get: (r) => [...new Set(r.refs.map((x) => x.rec.d.flag))] },
+    { id: 'make', label: 'Vehicle make', get: (r) => [...new Set(r.refs.map((x) => x.rec.d.make))] },
+    PEND
+  ]
+};
+const FIELDS = {
+  vehicles: ['name', 'color', 'make', 'model', 'year', 'body', 'bodystyle', 'flag', 'plate', 'state', 'notes', 'features', 'feature', 'observer', 'source', 'by', 'key', 'type'],
+  sightings: ['name', 'key', 'id', 'plate', 'make', 'color', 'model', 'notes', 'observer', 'source', 'flag', 'date', 'photo', 'vflag'],
+  plates: ['plate', 'number', 'state', 'type', 'key', 'name', 'status'],
+  photos: ['path', 'photo', 'status', 'key', 'name', 'vflag']
+};
+const HINTS = {
+  vehicles: 'Words are ANDed. <code>"two words"</code>, <code>-exclude</code>, <code>field:value</code> (name, color, make, model, year, body, flag, plate, state, notes, features, observer, source, by, key).',
+  sightings: 'Words are ANDed. <code>"two words"</code>, <code>-exclude</code>, <code>field:value</code> (name, key, id, plate, make, color, model, notes, observer, source, flag, date, photo). <code>date:2026-03</code> finds a month.',
+  plates: 'Words are ANDed. <code>field:value</code> (plate, number, state, type, key, name, status). <code>status:"no plate file"</code> lists plates a vehicle has but that have no file.',
+  photos: 'Words are ANDed. <code>field:value</code> (path, status, key, name, vflag). <code>status:unreferenced</code> finds photo files no sighting uses; <code>status:missing</code> finds references to files that are not there.'
+};
+
+const SORTS = {
+  vehicles: {
+    name: (r) => r.rec.d.name.toLowerCase(), flag: (r) => FLAGS.indexOf(r.rec.d.flag), plates: (r) => r.rec.d.plates[0] || '~',
+    body: (r) => r.rec.d.body, last: (r) => tsOf(r.rec.d.last), first: (r) => tsOf(r.rec.d.first), n: (r) => r.rec.d.nSight, photos: (r) => r.rec.d.nPhoto
+  },
+  sightings: {
+    name: (r) => r.rec.d.name.toLowerCase(), date: (r) => tsOf(r.s.timestamp), flag: (r) => FLAGS.indexOf(r.s.flag), observer: (r) => lc(r.s.observer),
+    source: (r) => lc(r.s.source), loc: (r) => (located(r.s) ? 1 : 0), photos: (r) => (r.s.photos || []).length, notes: (r) => lc(r.s.notes)
+  },
+  plates: {
+    plate: (r) => r.alias, type: (r) => (r.pl ? r.pl.p.plateType : ''), name: (r) => (r.rec ? r.rec.d.name.toLowerCase() : '~'),
+    first: (r) => tsOf(r.first), last: (r) => tsOf(r.last), status: (r) => r.status
+  },
+  photos: { path: (r) => r.path, status: (r) => r.status, used: (r) => r.refs.length }
+};
+
+const pendBadge = (r) => (r.pend === 'removed' ? '<span class="badge removed">to remove</span>' : r.pend === 'changed' ? '<span class="badge changed">edited</span>' : '');
+const COLS = {
+  vehicles: [
+    ['name', 'Vehicle', true, (r, t) => `<strong>${highlight(r.rec.d.name || '(no name)', t)}${pendBadge(r)}</strong><span class="muted" style="font-size:12px">${esc(r.rec.key)}${r.rec.d.year ? ` · ${esc(r.rec.d.year)}` : ''}</span>${snippet(r.rec.d.notes, t)}`],
+    ['flag', 'Flag', true, (r) => `<span class="dot dot-${esc(r.rec.d.flag)}"></span>${esc(r.rec.d.flag)}`],
+    ['plates', 'Plates', true, (r) => (r.rec.d.plates.length ? r.rec.d.plates.map(esc).join('<br>') : '<span class="muted">—</span>')],
+    ['body', 'Body', true, (r) => esc(r.rec.d.body)],
+    ['n', 'Sightings', true, (r) => r.rec.d.nSight],
+    ['photos', 'Photos', true, (r) => r.rec.d.nPhoto],
+    ['first', 'First seen', true, (r) => esc(day(r.rec.d.first))],
+    ['last', 'Last seen', true, (r) => esc(day(r.rec.d.last))]
+  ],
+  sightings: [
+    ['name', 'Vehicle', true, (r, t) => `<strong>${highlight(r.rec.d.name || '(no name)', t)}${pendBadge(r)}</strong><span class="muted" style="font-size:12px">${esc(r.rec.key)} · ${esc(r.rec.d.plates.join(', ') || 'no plate')}</span>`],
+    ['date', 'When', true, (r) => esc(String(r.s.timestamp || '').replace('T', ' ').slice(0, 16))],
+    ['flag', 'Flag', true, (r) => `<span class="dot dot-${esc(r.s.flag)}"></span>${esc(r.s.flag)}`],
+    ['observer', 'Observer', true, (r) => esc(r.s.observer || '')],
+    ['source', 'Source', true, (r) => esc(r.s.source || '')],
+    ['loc', 'Location', true, (r) => (r.loc ? esc(r.loc) : '<span class="muted">—</span>')],
+    ['photos', 'Photos', true, (r) => (r.s.photos || []).length],
+    ['notes', 'Notes', true, (r, t) => snippet(r.s.notes || '', t, true) || '<span class="muted">—</span>']
+  ],
+  plates: [
+    ['plate', 'Plate', true, (r, t) => `<strong>${highlight(r.alias, t)}${pendBadge(r)}</strong>`],
+    ['type', 'Type', true, (r) => esc(r.pl ? r.pl.p.plateType : '')],
+    ['name', 'Vehicle', true, (r) => (r.rec ? `${esc(r.rec.d.name)}<br><span class="muted" style="font-size:12px">${esc(r.rec.key)}</span>` : `<span class="muted">${esc(r.pl ? r.pl.p.currentVehicleKey : '')}</span>`)],
+    ['first', 'First seen', true, (r) => esc(day(r.first))],
+    ['last', 'Updated', true, (r) => esc(day(r.last))],
+    ['status', 'Status', true, (r) => (r.status === 'ok' ? 'ok' : `<span class="badge bad">${esc(r.status)}</span>`)]
+  ],
+  photos: [
+    ['path', 'Photo', true, (r, t) => `<strong>${highlight(r.path, t)}${pendBadge(r)}</strong>`],
+    ['status', 'Status', true, (r) => (r.status === 'ok' ? 'ok' : `<span class="badge bad">${esc(r.status)}</span>`)],
+    ['used', 'Used by', true, (r) => (r.refs.length ? r.refs.slice(0, 3).map((x) => `${esc(x.rec.d.name)} <span class="muted">${esc(day(x.s.timestamp))}</span>`).join('<br>') + (r.refs.length > 3 ? `<br><span class="muted">+${r.refs.length - 3} more</span>` : '') : '<span class="muted">nothing</span>')]
+  ]
+};
+const CSVROW = {
+  vehicles: [['vehicleKey', 'displayName', 'flag', 'plates', 'body', 'sightings', 'photos', 'firstSeen', 'lastSeen'], (r) => [r.rec.key, r.rec.d.name, r.rec.d.flag, r.rec.d.plates.join(' '), r.rec.d.body, r.rec.d.nSight, r.rec.d.nPhoto, r.rec.d.first, r.rec.d.last]],
+  sightings: [['vehicleKey', 'displayName', 'sightingId', 'timestamp', 'flag', 'observer', 'source', 'lat', 'lng', 'photos', 'notes'], (r) => [r.rec.key, r.rec.d.name, r.s.id, r.s.timestamp, r.s.flag, r.s.observer, r.s.source, located(r.s) ? r.s.location.lat : '', located(r.s) ? r.s.location.lng : '', (r.s.photos || []).join(' '), String(r.s.notes || '').replace(/\n/g, ' | ')]],
+  plates: [['alias', 'type', 'vehicleKey', 'displayName', 'firstSeen', 'updated', 'status'], (r) => [r.alias, r.pl ? r.pl.p.plateType : '', r.rec ? r.rec.key : '', r.rec ? r.rec.d.name : '', r.first, r.last, r.status]],
+  photos: [['path', 'status', 'usedBy'], (r) => [r.path, r.status, r.refs.map((x) => `${x.rec.key} ${x.s.id}`).join(' ')]]
+};
+
+// ====================== filtering ======================
+function parseQuery(q) {
+  const tokens = [];
+  const re = /(-?)(?:([A-Za-z]+):)?(?:"([^"]*)"|(\S+))/g;
+  let m;
+  const fields = FIELDS[level];
+  while ((m = re.exec(q))) {
+    const text = (m[3] ?? m[4] ?? '').toLowerCase();
+    if (!text) continue;
+    const field = m[2] ? m[2].toLowerCase() : null;
+    tokens.push({ neg: m[1] === '-', field, text });
+  }
+  return tokens.map((t) => (t.field && !fields.includes(t.field) ? { neg: t.neg, field: null, text: `${t.field}:${t.text}` } : t));
+}
+function textPasses(row, tokens) {
+  for (const t of tokens) {
+    const hay = t.field ? (row.f[t.field] ?? '') : row.hay;
+    const hit = hay.includes(t.text);
+    if (t.neg ? hit : !hit) return false;
+  }
+  return true;
+}
+function datesPass(row) {
+  const s = S();
+  const chk = (val, from, to) => (!from || (val && day(val) >= from)) && (!to || (val && day(val) <= to));
+  return chk(row.first, s.firstFrom, s.firstTo) && chk(row.last, s.lastFrom, s.lastTo);
+}
+const facetValues = (f, row) => { const v = f.get(row).map((x) => String(x ?? '').trim()).filter(Boolean); return v.length ? v : [NONE]; };
+function facetPasses(row, f) {
+  const sel = S().facets[f.id];
+  if (!sel || !sel.size) return true;
+  return facetValues(f, row).some((v) => sel.has(v));
+}
+
+function compute() {
+  const s = S();
+  const tokens = parseQuery(s.q);
+  const facets = FACETS[level];
+  const base = [];
+  for (const row of rowsFor(level)) if (textPasses(row, tokens) && datesPass(row)) base.push(row);
+  const counts = {};
+  for (const f of facets) {
+    const c = new Map();
+    for (const row of base) {
+      if (!facets.every((g) => g.id === f.id || facetPasses(row, g))) continue;
+      for (const v of new Set(facetValues(f, row))) c.set(v, (c.get(v) || 0) + 1);
+    }
+    counts[f.id] = c;
+  }
+  filtered = base.filter((row) => facets.every((f) => facetPasses(row, f)) && (!s.only || s.sel.has(row.id)));
+  const key = (SORTS[level][s.sortKey]) || Object.values(SORTS[level])[0];
+  filtered.sort((a, b) => {
+    const x = key(a), y = key(b);
+    return (x < y ? -1 : x > y ? 1 : a.id < b.id ? -1 : 1) * s.sortDir;
+  });
+  return { tokens, counts };
+}
+
+// ====================== rendering ======================
+let facetsBuilt = false;
+function renderAll(rebuildFacets = false) {
+  const r = compute(); lastCounts = r.counts; lastTokens = r.tokens;
+  renderTabs();
+  if (rebuildFacets || !facetsBuilt) renderFacets(); else updateFacetCounts();
+  renderResults();
+  renderActions();
+}
+function renderTabs() {
+  $('tabs').innerHTML = LEVELS.map(([id, label]) => {
+    const n = id === 'vehicles' ? recs.size : rowsFor(id).length;
+    return `<button data-level="${id}" class="${id === level ? 'on' : ''}">${label}<span class="n">${n}</span></button>`;
+  }).join('');
+}
+function syncInputs() {
+  const s = S();
+  $('q').value = s.q;
+  $('first-from').value = s.firstFrom; $('first-to').value = s.firstTo; $('last-from').value = s.lastFrom; $('last-to').value = s.lastTo;
+  $('q-hint').innerHTML = HINTS[level];
+  const single = level !== 'vehicles';
+  $('first-from').parentElement.querySelectorAll('#first-label,#first-from,#first-to').forEach((el) => { el.hidden = single; });
+  $('last-label').textContent = level === 'vehicles' ? 'Last seen' : level === 'sightings' ? 'Seen' : level === 'plates' ? 'Updated' : 'Last used';
+}
+
+function highlight(text) {
+  const t = String(text ?? '');
+  const use = lastTokens.filter((x) => !x.neg).map((x) => x.text);
+  if (!use.length) return esc(t);
+  const re = new RegExp(`(${use.map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  return t.split(re).map((part, i) => (i % 2 ? `<mark>${esc(part)}</mark>` : esc(part))).join('');
+}
+function snippet(notesIn, terms, plain = false) {
+  const notes = String(notesIn || '').replace(/\s+/g, ' ').trim();
+  if (!notes) return '';
+  const pos = lastTokens.filter((t) => !t.neg).map((t) => t.text);
+  let at = 0;
+  const lower = notes.toLowerCase();
+  for (const t of pos) { const i = lower.indexOf(t); if (i >= 0) { at = Math.max(0, i - 30); break; } }
+  const part = notes.slice(at, at + 110);
+  const html = `${at > 0 ? '…' : ''}${highlight(part, pos)}${at + 110 < notes.length ? '…' : ''}`;
+  return plain ? html : `<span class="snip">${html}</span>`;
+}
+
+function renderResults() {
+  const s = S();
+  const total = level === 'vehicles' ? recs.size : rowsFor(level).length;
+  $('count').textContent = `${filtered.length} of ${total} ${level}`;
+  const allSelected = filtered.length > 0 && filtered.every((r) => s.sel.has(r.id));
+  const cols = COLS[level];
+  $('thead').innerHTML = `<th class="cb nosort"><input type="checkbox" id="chk-all" title="Select or unselect everything that matches" ${allSelected ? 'checked' : ''}></th>` + cols.map(([id, label, sortable]) => {
+    const arrow = s.sortKey === id ? (s.sortDir > 0 ? ' ▲' : ' ▼') : '';
+    return `<th data-sort="${sortable ? id : ''}" class="${sortable ? '' : 'nosort'}">${label}${arrow}</th>`;
+  }).join('');
+  const shown = filtered.slice(0, s.limit);
+  $('tbody').innerHTML = shown.map((row) => {
+    const sel = s.sel.has(row.id);
+    return `<tr class="row${sel ? ' sel' : ''}${row.pend === 'removed' ? ' removed' : ''}" data-id="${esc(row.id)}">
+      <td class="cb"><input type="checkbox" ${sel ? 'checked' : ''} data-pick="${esc(row.id)}" aria-label="Select"></td>
+      ${cols.map(([, , , render], i) => `<td${i === 0 ? ' class="name"' : ''}>${render(row, lastTokens)}</td>`).join('')}</tr>`;
+  }).join('') || `<tr><td colspan="${cols.length + 1}" class="muted" style="padding:20px;text-align:center">Nothing matches.</td></tr>`;
+  $('more').innerHTML = filtered.length > s.limit ? `<button id="btn-more">Show ${Math.min(PAGE, filtered.length - s.limit)} more (${filtered.length - s.limit} not shown)</button>` : '';
+  renderSelbar();
+}
+
+function renderSelbar() {
+  const s = S();
+  const n = s.sel.size;
+  const matching = filtered.length;
+  const matchSelected = filtered.filter((r) => s.sel.has(r.id)).length;
+  const visible = Math.min(matching, s.limit);
+  $('selbar').innerHTML = `
+    <span><span class="picked">${n}</span> selected${n && matchSelected !== n ? ` (${matchSelected} of them in this list)` : ''}</span>
+    <button data-sel="all" ${matching ? '' : 'disabled'}>Select all ${matching} matching</button>
+    <button data-sel="page" ${visible ? '' : 'disabled'}>Select the ${visible} shown</button>
+    <button data-sel="invert" ${matching ? '' : 'disabled'}>Invert in this list</button>
+    <button data-sel="unmatch" ${matchSelected ? '' : 'disabled'}>Unselect these</button>
+    <button data-sel="none" ${n ? '' : 'disabled'}>Clear selection</button>
+    <button class="chip${s.only ? ' on' : ''}" data-sel="only" ${n || s.only ? '' : 'disabled'}>Show selected only</button>`;
+}
+
+// ---- bulk action bar ----
+const SET_FIELDS = {
+  vehicles: [['flag', 'Flag'], ['bodyStyle', 'Body style'], ['color', 'Color'], ['make', 'Make'], ['model', 'Model'], ['year', 'Year']],
+  sightings: [['flag', 'Flag'], ['observer', 'Observer'], ['source', 'Source']]
+};
+function valueControl(field) {
+  if (field === 'flag') return `<select id="act-value">${FLAGS.map((x) => `<option>${x}</option>`).join('')}</select>`;
+  if (field === 'bodyStyle') return `<select id="act-value">${BODY_STYLES.map((x) => `<option>${x}</option>`).join('')}</select>`;
+  return `<input type="text" id="act-value" placeholder="${field === 'observer' || field === 'source' ? 'new value (empty clears it)' : 'new value'}" size="18">`;
+}
+function renderActions() {
+  const n = S().sel.size;
+  const dis = n ? '' : ' disabled';
+  const setBox = SET_FIELDS[level] ? `<div class="grp"><label>Set</label><select id="act-field">${SET_FIELDS[level].map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select>
+      <span id="act-valwrap">${valueControl(SET_FIELDS[level][0][0])}</span><button data-act="set"${dis}>Apply to ${n}</button></div>` : '';
+  let html = '';
+  if (level === 'vehicles') {
+    html = `${setBox}<div class="grp"><button class="warnbtn" data-act="remove-vehicles"${dis}>Remove ${n || ''} vehicle${n === 1 ? '' : 's'}</button><span class="hint" style="margin:0">with their plate files and photos</span></div>`;
+  } else if (level === 'sightings') {
+    html = `<div class="grp"><button class="warnbtn" data-act="remove-sightings"${dis}>Remove ${n || ''} sighting${n === 1 ? '' : 's'}</button>
+        <label><input type="checkbox" id="opt-delfiles"> also delete their photo files</label></div>
+      <div class="grp"><button data-act="clear-location"${dis}>Clear location</button><button data-act="clear-notes"${dis}>Clear notes</button>
+        <button data-act="clear-photos"${dis}>Remove photos from them</button><label><input type="checkbox" id="opt-delfiles2"> delete the files too</label></div>${setBox}`;
+  } else if (level === 'plates') {
+    html = `<div class="grp"><button class="warnbtn" data-act="remove-plates"${dis}>Remove ${n || ''} plate${n === 1 ? '' : 's'}</button><span class="hint" style="margin:0">from the vehicle and its plate file</span></div>
+      <div class="grp"><label>Type</label><select id="act-ptype">${PLATE_TYPES.map((x) => `<option>${x}</option>`).join('')}</select><button data-act="plate-type"${dis}>Apply</button></div>
+      <div class="grp"><label>State</label><select id="act-pstate">${STATES.map((c) => `<option value="${c}">${esc(stateName(c))}</option>`).join('')}</select>
+        <input type="text" id="act-pcode" maxlength="8" size="6" placeholder="code" title="Optional code for USG / GOV, for example G42 or DHS"><button data-act="plate-state"${dis}>Change state</button></div>`;
+  } else {
+    html = `<div class="grp"><button data-act="photo-ref"${dis}>Remove from records (keep file)</button>
+        <button class="warnbtn" data-act="photo-del"${dis}>Remove from records and delete file</button></div>
+      <span class="hint" style="margin:0">Unreferenced files are only deleted; missing files only lose their reference.</span>`;
+  }
+  $('actbar').innerHTML = html;
+}
+
+// ---- facets ----
+function renderFacets() {
+  facetsBuilt = true;
+  const s = S();
+  $('facet-list').innerHTML = `<h3>Filter by value</h3>` + FACETS[level].map((f) => `
+    <details class="facet" data-facet="${f.id}"${s.openFacets.has(f.id) ? ' open' : ''}>
+      <summary>${esc(f.label)} <span class="n" data-n="${f.id}"></span><span class="sel" data-sel-count="${f.id}" hidden></span></summary>
+      <input class="ffilter" type="search" placeholder="Filter values…" data-ffilter="${f.id}" value="${esc(s.facetFilter[f.id] || '')}">
+      <div class="fvals" data-fvals="${f.id}"></div>
+    </details>`).join('');
+  for (const f of FACETS[level]) fillFacet(f);
+}
+function updateFacetCounts() { for (const f of FACETS[level]) fillFacet(f); }
+function fillFacet(f) {
+  const box = document.querySelector(`[data-fvals="${f.id}"]`);
+  if (!box) return;
+  const s = S();
+  const counts = lastCounts[f.id] || new Map();
+  const sel = s.facets[f.id] || new Set();
+  const all = new Set([...counts.keys(), ...sel]);
+  const flt = (s.facetFilter[f.id] || '').toLowerCase();
+  const values = [...all].filter((v) => !flt || v.toLowerCase().includes(flt));
+  if (f.id === 'flag' || f.id === 'vflag') values.sort((a, b) => FLAGS.indexOf(a) - FLAGS.indexOf(b));
+  else if (f.id === 'sight') values.sort((a, b) => SIGHT_BUCKETS.indexOf(a) - SIGHT_BUCKETS.indexOf(b));
+  else if (f.id === 'month') values.sort().reverse();
+  else values.sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || a.localeCompare(b));
+  box.innerHTML = values.slice(0, 300).map((v) => {
+    const c = counts.get(v) || 0;
+    return `<label class="fv${c ? '' : ' zero'}"><input type="checkbox" data-fv="${f.id}" value="${esc(v)}" ${sel.has(v) ? 'checked' : ''}><span class="t">${esc(v)}</span><span class="c">${c}</span></label>`;
+  }).join('') || '<div class="muted">No values.</div>';
+  const n = document.querySelector(`[data-n="${f.id}"]`); if (n) n.textContent = `(${all.size})`;
+  const sc = document.querySelector(`[data-sel-count="${f.id}"]`); if (sc) { sc.hidden = !sel.size; sc.textContent = sel.size; }
+}
+
+// ====================== staged-change bookkeeping ======================
+function dirtySummary() {
+  const eff = effective();
+  const vChanged = [...eff.vehicles.values()].filter((r) => recPending(r) === 'changed').length;
+  const vRemoved = eff.removedRecs.length;
+  const pWrite = eff.plateActions.filter((a) => a.action === 'write' || a.action === 'repoint').length;
+  const pDelete = eff.plateActions.filter((a) => a.action === 'delete').length;
+  const photos = eff.photoOut.length;
+  return { eff, vChanged, vRemoved, pWrite, pDelete, photos, total: vChanged + vRemoved + pWrite + pDelete + photos };
+}
+let lastPendingRev = -1;
+function renderPending() {
+  const box = $('pending');
+  if (!root) { box.hidden = true; return; }
+  const d = dirtySummary();
+  lastPendingRev = rev;
+  document.body.classList.toggle('has-pending', d.total > 0);
+  if (!d.total) { box.hidden = true; return; }
+  const bits = [];
+  if (d.vChanged) bits.push(plural(d.vChanged, 'vehicle file') + ' edited');
+  if (d.vRemoved) bits.push(plural(d.vRemoved, 'vehicle') + ' to remove');
+  if (d.pWrite) bits.push(plural(d.pWrite, 'plate file') + ' to write');
+  if (d.pDelete) bits.push(plural(d.pDelete, 'plate file') + ' to remove');
+  if (d.photos) bits.push(plural(d.photos, 'photo') + ' to delete');
+  box.hidden = false;
+  box.innerHTML = `<b>Staged, not written:</b> <span>${esc(bits.join(' · '))}</span><span class="spacer"></span>
+    <button id="btn-discard">Discard all</button><button class="primary" id="btn-review">Review &amp; save…</button>`;
+}
+function afterChange(message) {
+  changed();
+  for (const rec of recs.values()) derive(rec);
+  renderAll(true);
+  renderPending();
+  if (detailRef) openDetail(detailRef.level, detailRef.id, true);
+  if (message) banner(message, 'ok');
+}
+function log(text) { changeLog.push(text); }
+const vname = (rec) => `${rec.d ? rec.d.name : rec.key} (${rec.key})`;
+
+// ====================== editing operations (all staged in memory) ======================
+function touchUpdated(rec) { rec.v.lastUpdatedBy = EDITOR; }
+function recomputeSeen(rec) {
+  const ts = (rec.v.sightings || []).map((s) => s.timestamp).filter((t) => Number.isFinite(Date.parse(t))).sort((a, b) => tsOf(a) - tsOf(b));
+  if (ts.length) { rec.v.firstSeen = ts[0]; rec.v.lastSeen = ts[ts.length - 1]; }
+}
+function selectedRows() { const s = S(); return rowsFor(level).filter((r) => s.sel.has(r.id)); }
+function selectedRecs() { return [...new Map(selectedRows().filter((r) => r.rec && !r.rec.deleted).map((r) => [r.rec.key, r.rec])).values()]; }
+
+function opRemoveVehicles(keys) {
+  let n = 0;
+  for (const k of keys) { const rec = recs.get(k); if (rec && !rec.deleted) { rec.deleted = true; n++; log(`Removed vehicle ${vname(rec)}`); } }
+  afterChange(`Staged removal of ${plural(n, 'vehicle')}.`);
+}
+
+function opSetVehicleField(keys, field, raw) {
+  const value = String(raw ?? '');
+  let n = 0;
+  const errs = [];
+  if (field === 'year' && value.trim() && !(Number.isInteger(Number(value)) && Number(value) >= 1900 && Number(value) <= 2100)) { errs.push('Year must be four digits, 1900-2100.'); }
+  if ((field === 'color' || field === 'make') && !clean(value)) errs.push(`${field} must not be empty (use “unknown”).`);
+  if (errs.length) { banner(esc(errs.join(' ')), 'err'); return; }
+  for (const k of keys) {
+    const rec = recs.get(k);
+    if (!rec || rec.deleted) continue;
+    const v = rec.v;
+    const before = ser(v);
+    if (field === 'flag' || field === 'bodyStyle') v[field] = value;
+    else if (field === 'color') v.color = clean(value).toLowerCase();
+    else if (field === 'make') v.make = tidyWord(value);
+    else if (field === 'model') v.model = clean(value) ? tidyWord(value) : null;
+    else if (field === 'year') v.year = value.trim() ? Number(value) : null;
+    if (['color', 'make', 'model'].includes(field)) v.displayName = buildDisplayName(v.color, v.make, v.model);
+    if (ser(v) !== before) { touchUpdated(rec); n++; log(`Set ${field} to “${value}” on ${vname(rec)}`); }
+  }
+  afterChange(`Staged: ${field} set on ${plural(n, 'vehicle')}.`);
+}
+
+function groupSightings(rows) {
+  const by = new Map();
+  for (const r of rows) { if (r.rec.deleted) continue; if (!by.has(r.rec.key)) by.set(r.rec.key, { rec: r.rec, ids: new Set() }); by.get(r.rec.key).ids.add(r.s.id); }
+  return [...by.values()];
+}
+function opRemoveSightings(rows, deleteFiles) {
+  const groups = groupSightings(rows);
+  const emptied = groups.filter((g) => g.rec.v.sightings.every((s) => g.ids.has(s.id)));
+  if (emptied.length && !confirm(`${plural(emptied.length, 'vehicle')} would have no sightings left, and a vehicle needs at least one. ${emptied.length === 1 ? 'It' : 'They'} will be removed completely:\n\n${emptied.slice(0, 10).map((g) => `• ${g.rec.d.name} (${g.rec.key})`).join('\n')}${emptied.length > 10 ? '\n…' : ''}\n\nContinue?`)) return;
+  let n = 0;
+  for (const g of groups) {
+    if (emptied.includes(g)) {
+      g.rec.deleted = true; log(`Removed vehicle ${vname(g.rec)} (its last sighting was removed)`);
+      if (deleteFiles) for (const s of g.rec.v.sightings) for (const p of s.photos || []) photoDeletes.add(p);
+      n += g.ids.size; continue;
+    }
+    for (const s of g.rec.v.sightings.filter((x) => g.ids.has(x.id))) {
+      if (deleteFiles) for (const p of s.photos || []) photoDeletes.add(p);
+      log(`Removed sighting ${s.id} (${day(s.timestamp)}) of ${vname(g.rec)}`);
+      n++;
+    }
+    g.rec.v.sightings = g.rec.v.sightings.filter((s) => !g.ids.has(s.id));
+    recomputeSeen(g.rec); touchUpdated(g.rec);
+  }
+  S().sel.clear();
+  afterChange(`Staged removal of ${plural(n, 'sighting')}${emptied.length ? ` and ${plural(emptied.length, 'vehicle')}` : ''}.`);
+}
+function opSightingEach(rows, label, fn) {
+  let n = 0;
+  for (const g of groupSightings(rows)) {
+    let hit = false;
+    for (const s of g.rec.v.sightings) if (g.ids.has(s.id) && fn(s)) { hit = true; n++; log(`${label} on sighting ${s.id} (${day(s.timestamp)}) of ${vname(g.rec)}`); }
+    if (hit) touchUpdated(g.rec);
+  }
+  afterChange(`Staged: ${label.toLowerCase()} on ${plural(n, 'sighting')}.`);
+}
+function opClearLocation(rows) { opSightingEach(rows, 'Cleared location', (s) => { if (s.location === undefined || s.location === null) return false; delete s.location; return true; }); }
+function opClearNotes(rows) { opSightingEach(rows, 'Cleared notes', (s) => { if (!s.notes) return false; s.notes = null; return true; }); }
+function opRemovePhotosFromSightings(rows, deleteFiles) {
+  opSightingEach(rows, 'Removed photos', (s) => {
+    if (!(s.photos || []).length) return false;
+    if (deleteFiles) for (const p of s.photos) photoDeletes.add(p);
+    s.photos = [];
+    return true;
+  });
+}
+function opSetSightingField(rows, field, raw) {
+  const value = String(raw ?? '').trim();
+  if (field === 'observer' && value.length > 40) { banner('Observer must be at most 40 characters.', 'err'); return; }
+  opSightingEach(rows, `Set ${field}${value ? ` to “${value}”` : ' (cleared)'}`, (s) => {
+    const next = field === 'flag' ? value : value || null;
+    if ((s[field] ?? null) === next) return false;
+    if (next === null && field !== 'flag') { if (field === 'observer') delete s.observer; else s[field] = null; } else s[field] = next;
+    return true;
+  });
+}
+
+function opRemovePhotoRefs(paths, deleteFile) {
+  const set = new Set(paths);
+  let refs = 0, files = 0;
+  for (const rec of recs.values()) {
+    if (rec.deleted) continue;
+    let hit = false;
+    for (const s of rec.v.sightings || []) {
+      const keep = (s.photos || []).filter((p) => !set.has(p));
+      if (keep.length !== (s.photos || []).length) { s.photos = keep; hit = true; refs++; }
+    }
+    if (hit) { touchUpdated(rec); log(`Removed photo reference(s) from ${vname(rec)}`); }
+  }
+  if (deleteFile) for (const p of set) if (photoFiles.has(p) && !photoDeletes.has(p)) { photoDeletes.add(p); files++; log(`Delete photo file ${p}`); }
+  S().sel.clear();
+  afterChange(`Staged: ${plural(refs, 'photo reference')} removed${deleteFile ? `, ${plural(files, 'file')} to delete` : ''}.`);
+}
+
+function opRemovePlates(aliases) {
+  let n = 0;
+  for (const alias of aliases) {
+    const pl = plates.get(alias);
+    const ownerKey = pl ? pl.p.currentVehicleKey : null;
+    const holders = [...recs.values()].filter((r) => !r.deleted && (r.v.plateAliases || []).includes(alias) && (!pl || r.key === ownerKey || true));
+    for (const r of holders) { r.v.plateAliases = r.v.plateAliases.filter((a) => a !== alias); touchUpdated(r); }
+    if (pl) pl.deleted = true;
+    log(`Removed plate ${alias}`);
+    n++;
+  }
+  S().sel.clear();
+  afterChange(`Staged removal of ${plural(n, 'plate')}.`);
+}
+function opSetPlateType(aliases, type) {
+  let n = 0;
+  for (const alias of aliases) { const pl = plates.get(alias); if (pl && !pl.deleted && pl.p.plateType !== type) { pl.p.plateType = type; pl.p.updated = nowIso(); n++; log(`Set plate type of ${alias} to ${type}`); } }
+  afterChange(`Staged: plate type set on ${plural(n, 'plate')}.`);
+}
+/** Rename/retype a plate on its owner vehicle. Returns an error message or ''. */
+function renamePlate(rec, oldAlias, state, num, type) {
+  const v = rec.v;
+  const alias = aliasOf(state, num);
+  if (!isState(state)) return `“${state}” is not a known state code.`;
+  if (!ALIAS_RE.test(alias)) return `“${num}” is not a valid plate (1-20 letters/digits).`;
+  const old = plates.get(oldAlias);
+  const now = nowIso();
+  if (alias === oldAlias) {
+    if (old && old.p.plateType !== type) { old.p.plateType = type; old.p.updated = now; }
+    return '';
+  }
+  const clash = plates.get(alias);
+  if (clash && !clash.deleted) return `${alias} already exists (vehicle ${clash.p.currentVehicleKey}). That may be the same vehicle: look it up and merge by hand.`;
+  if (v.plateAliases.includes(alias)) return `${alias} is already on this vehicle.`;
+  const idx = v.plateAliases.indexOf(oldAlias);
+  if (idx >= 0) v.plateAliases[idx] = alias; else v.plateAliases.push(alias);
+  if (old) old.deleted = true;
+  const [aliasState, aliasPlate] = splitAlias(alias);
+  plates.set(alias, { p: { plate: aliasPlate, plateState: aliasState, plateType: type, currentVehicleKey: rec.key, firstSeen: old ? old.p.firstSeen : now, updated: now }, orig: clash ? clash.orig : null, deleted: false });
+  touchUpdated(rec);
+  return '';
+}
+function opChangePlateState(aliases, stateText) {
+  const state = stateText.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (!isState(state)) { banner(`“${esc(stateText)}” is not a known state code.`, 'err'); return; }
+  let n = 0; const errs = [];
+  for (const alias of aliases) {
+    const pl = plates.get(alias);
+    const rec = pl ? recs.get(pl.p.currentVehicleKey) : null;
+    if (!pl || !rec || rec.deleted) { errs.push(`${alias}: no plate file or owner vehicle`); continue; }
+    const [, num] = splitAlias(alias);
+    const msg = renamePlate(rec, alias, state, num, pl.p.plateType);
+    if (msg) errs.push(`${alias}: ${msg}`); else if (aliasOf(state, num) !== alias) { n++; log(`Changed plate ${alias} to ${aliasOf(state, num)}`); }
+  }
+  S().sel.clear();
+  afterChange(`Staged: state changed on ${plural(n, 'plate')}.`);
+  if (errs.length) banner(`${plural(errs.length, 'plate')} skipped:<pre>${esc(errs.slice(0, 15).join('\n'))}</pre>`, '', true);
+}
+
+// ====================== selection ======================
+function toggleId(id, on) { const s = S(); if (on) s.sel.add(id); else s.sel.delete(id); }
+function selectRange(toId) {
+  const s = S();
+  const ids = filtered.slice(0, s.limit).map((r) => r.id);
+  const a = ids.indexOf(s.lastClicked), b = ids.indexOf(toId);
+  if (a < 0 || b < 0) { toggleId(toId, true); return; }
+  for (const id of ids.slice(Math.min(a, b), Math.max(a, b) + 1)) s.sel.add(id);
+}
+function selAction(kind) {
+  const s = S();
+  if (kind === 'all') for (const r of filtered) s.sel.add(r.id);
+  else if (kind === 'page') for (const r of filtered.slice(0, s.limit)) s.sel.add(r.id);
+  else if (kind === 'invert') for (const r of filtered) toggleId(r.id, !s.sel.has(r.id));
+  else if (kind === 'unmatch') for (const r of filtered) s.sel.delete(r.id);
+  else if (kind === 'none') { s.sel.clear(); s.only = false; }
+  else if (kind === 'only') s.only = !s.only;
+  renderAll();
+}
+
+function runAction(kind) {
+  const rows = selectedRows();
+  if (!rows.length) return;
+  const ids = rows.map((r) => r.id);
+  if (kind === 'set') {
+    const field = $('act-field').value, value = $('act-value').value;
+    if (level === 'vehicles') opSetVehicleField(selectedRecs().map((r) => r.key), field, value);
+    else opSetSightingField(rows, field, value);
+  } else if (kind === 'remove-vehicles') {
+    if (rows.length > 20 && !confirm(`Stage removal of ${rows.length} vehicles?`)) return;
+    opRemoveVehicles(ids);
+  } else if (kind === 'remove-sightings') opRemoveSightings(rows, $('opt-delfiles').checked);
+  else if (kind === 'clear-location') opClearLocation(rows);
+  else if (kind === 'clear-notes') opClearNotes(rows);
+  else if (kind === 'clear-photos') opRemovePhotosFromSightings(rows, $('opt-delfiles2').checked);
+  else if (kind === 'remove-plates') opRemovePlates(ids);
+  else if (kind === 'plate-type') opSetPlateType(ids, $('act-ptype').value);
+  else if (kind === 'plate-state') {
+    const base = $('act-pstate').value;
+    const code = $('act-pcode').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    opChangePlateState(ids, FEDERAL.includes(base) && code ? `${base}-${code}` : base);
+  } else if (kind === 'photo-ref') opRemovePhotoRefs(ids, false);
+  else if (kind === 'photo-del') opRemovePhotoRefs(ids, true);
+}
+
+// ====================== detail drawer ======================
+function closeDetail() {
+  $('detail').hidden = true; $('detail').innerHTML = '';
+  document.body.classList.remove('has-detail');
+  for (const u of detailUrls) URL.revokeObjectURL(u);
+  detailUrls.length = 0;
+  detailRef = null;
+}
+const optList = (list, cur) => list.map((x) => `<option value="${esc(x)}"${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
+function jsonBlock(text, hint) {
+  return `<h3>Raw JSON</h3><div class="hint">${hint}</div><textarea class="json" id="d-json" spellcheck="false">${esc(text)}</textarea>
+    <div class="btnrow"><button id="d-json-apply">Apply JSON</button><button id="d-json-reset">Reset text</button></div>`;
+}
+
+function openDetail(lv, id, keepScroll = false) {
+  const row = rowsFor(lv).find((r) => r.id === id);
+  const prevScroll = keepScroll ? $('detail').scrollTop : 0;
+  for (const u of detailUrls) URL.revokeObjectURL(u);
+  detailUrls.length = 0;
+  if (!row) { closeDetail(); return; }
+  detailRef = { level: lv, id };
+  let html = '';
+  if (lv === 'vehicles') html = detailVehicle(row);
+  else if (lv === 'sightings') html = detailSighting(row);
+  else if (lv === 'plates') html = detailPlate(row);
+  else html = detailPhoto(row);
+  $('detail').innerHTML = `<button class="close" id="btn-close">Close ✕</button>${html}`;
+  $('detail').hidden = false;
+  document.body.classList.add('has-detail');
+  $('detail').scrollTop = prevScroll;
+  loadThumbs();
+}
+function undoButton(label) { return `<button id="d-undo" class="compact">${label}</button>`; }
+
+function detailVehicle(row) {
+  const rec = row.rec, d = rec.d;
+  return `<h2>${esc(d.name)}</h2>
+    <div class="muted">${esc(rec.key)} · ${plural(d.nSight, 'sighting')} · ${plural(d.nPhoto, 'photo')} · last updated by ${esc(d.by || 'unknown')}</div>
+    ${rec.deleted ? '<div class="errs">Staged for removal.</div>' : ''}
+    <div class="btnrow"><button data-go="sightings" data-q="key:${esc(rec.key)}">Show its sightings</button><button data-go="plates" data-q="key:${esc(rec.key)}">Show its plates</button>
+      ${rec.deleted ? '' : '<button class="warnbtn" id="d-remove">Remove this vehicle</button>'}${undoButton('Undo changes to this vehicle')}</div>
+    <div id="d-errs"></div>
+    ${jsonBlock(ser(rec.v), 'The whole vehicle file. Any field can be changed; the result is checked against the schema before it is staged. Plates and sightings listed here are changed in place only (plate files are not renamed).')}`;
+}
+function detailSighting(row) {
+  const { rec, s } = row;
+  const loc = located(s) ? s.location : null;
+  const photos = (s.photos || []).map((p) => `<div class="thumb" data-photo="${esc(p)}"><div class="imgbox"></div><div class="p">${esc(p)}${photoFiles.has(p) ? '' : ' <b>(file missing)</b>'}</div>
+      <button class="compact" data-rmphoto="${esc(p)}">Remove</button> <button class="compact warnbtn" data-rmphoto="${esc(p)}" data-del="1">Remove + delete file</button></div>`).join('');
+  return `<h2>Sighting of ${esc(rec.d.name)}</h2>
+    <div class="muted">${esc(rec.key)} · ${esc(s.id)} · ${plural(rec.d.nSight, 'sighting')} on this vehicle</div>
+    ${rec.deleted ? '<div class="errs">This vehicle is staged for removal.</div>' : ''}
+    <div id="d-errs"></div>
+    <label class="f">When (ISO date-time)</label><input type="text" id="s-ts" value="${esc(s.timestamp || '')}">
+    <div class="row2"><div><label class="f">Flag</label><select id="s-flag">${optList(FLAGS, s.flag)}</select></div>
+      <div><label class="f">Observer</label><input type="text" id="s-obs" maxlength="40" value="${esc(s.observer || '')}"></div></div>
+    <label class="f">Source</label><input type="text" id="s-src" value="${esc(s.source || '')}">
+    <div class="row2"><div><label class="f">Latitude (blank + blank = no location)</label><input type="text" id="s-lat" value="${loc ? esc(loc.lat) : ''}"></div>
+      <div><label class="f">Longitude</label><input type="text" id="s-lng" value="${loc ? esc(loc.lng) : ''}"></div></div>
+    <label class="f">Notes</label><textarea id="s-notes" rows="4">${esc(s.notes || '')}</textarea>
+    <div class="btnrow"><button class="primary" id="d-apply-sighting">Stage these changes</button>
+      <button id="d-clear-loc" ${loc ? '' : 'disabled'}>Clear location</button>
+      <button class="warnbtn" id="d-remove-sighting">Remove this sighting</button>${undoButton('Undo changes to this vehicle')}</div>
+    <h3>Photos (${(s.photos || []).length})</h3>${photos || '<div class="muted">None.</div>'}
+    <div class="btnrow"><button data-go="vehicles" data-q="key:${esc(rec.key)}">Show the vehicle</button></div>
+    ${jsonBlock(ser(s), 'Just this sighting. Checked against the schema before it is staged.')}`;
+}
+function detailPlate(row) {
+  const { alias, pl, rec } = row;
+  const [st, num] = splitAlias(alias);
+  const [base, code] = stateParts(st);
+  const editable = pl && rec && !rec.deleted && pl.p.currentVehicleKey === rec.key;
+  return `<h2>${esc(alias)}</h2>
+    <div class="muted">${pl ? `plate file · ${esc(pl.p.plateType)} · belongs to ${esc(pl.p.currentVehicleKey)}` : 'listed on a vehicle, but there is no plate file'}${rec ? ` · ${esc(rec.d.name)}` : ''}</div>
+    <div id="d-errs"></div>
+    ${editable ? `<div class="row2"><div><label class="f">State</label><select id="p-state">${STATES.map((c) => `<option value="${c}"${c === base ? ' selected' : ''}>${esc(stateName(c))}</option>`).join('')}</select></div>
+      <div><label class="f">Code (USG / GOV only)</label><input type="text" id="p-code" maxlength="8" value="${esc(code)}"></div></div>
+      <div class="row2"><div><label class="f">Plate</label><input type="text" id="p-num" maxlength="20" value="${esc(num)}"></div>
+      <div><label class="f">Type</label><select id="p-type">${optList(PLATE_TYPES, pl.p.plateType)}</select></div></div>
+      <div class="btnrow"><button class="primary" id="d-apply-plate">Stage these changes</button>` : '<div class="btnrow">'}
+      ${rec ? `<button data-go="vehicles" data-q="key:${esc(rec.key)}">Show the vehicle</button>` : ''}
+      <button class="warnbtn" id="d-remove-plate">Remove this plate</button>${undoButton('Undo changes to this plate')}</div>
+    ${pl ? jsonBlock(ser(pl.p), 'The plate file. Changing state or plate here does not rename the file; use the fields above for that.') : ''}`;
+}
+function detailPhoto(row) {
+  const refs = row.refs.map((x) => `<li>${esc(x.rec.d.name)} <span class="muted">${esc(x.rec.key)} · ${esc(day(x.s.timestamp))} · ${esc(x.s.id)}</span></li>`).join('');
+  return `<h2>${esc(row.path)}</h2>
+    <div class="muted">${esc(row.status)}${photoDeletes.has(row.path) ? ' · file staged for deletion' : ''}</div>
+    ${row.exists ? `<div class="thumb" data-photo="${esc(row.path)}"><div class="imgbox"></div></div>` : ''}
+    <h3>Used by (${row.refs.length})</h3><ul>${refs || '<li class="muted">No sighting uses this file.</li>'}</ul>
+    <div class="btnrow"><button id="d-photo-ref" ${row.refs.length ? '' : 'disabled'}>Remove from records (keep file)</button>
+      <button class="warnbtn" id="d-photo-del">${row.refs.length ? 'Remove from records and delete file' : 'Delete file'}</button>${undoButton('Undo file deletion')}</div>`;
+}
+
+async function loadThumbs() {
+  for (const el of document.querySelectorAll('#detail .thumb[data-photo]')) {
+    const path = el.dataset.photo;
+    try {
+      const file = await photoFile(path);
+      const url = URL.createObjectURL(file);
+      detailUrls.push(url);
+      const img = document.createElement('img');
+      img.src = url; img.alt = path;
+      el.querySelector('.imgbox').appendChild(img);
+    } catch { /* missing file: the caption says so */ }
+  }
+}
+
+function detailErrors(list) { $('d-errs').innerHTML = list.length ? `<div class="errs">${list.map((e) => `<div>${esc(e)}</div>`).join('')}</div>` : ''; }
+
+function applySightingForm() {
+  const { rec, s } = (() => { const row = rowsFor('sightings').find((r) => r.id === detailRef.id); return row; })();
+  const errs = [];
+  const ts = $('s-ts').value.trim();
+  if (Number.isNaN(Date.parse(ts))) errs.push('When must be a date-time such as 2026-03-04T15:20:00Z.');
+  const obs = $('s-obs').value.trim();
+  const latT = $('s-lat').value.trim(), lngT = $('s-lng').value.trim();
+  let location;
+  if (!latT && !lngT) location = null;
+  else {
+    const lat = Number(latT), lng = Number(lngT);
+    if (!latT || !lngT || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) errs.push('Location needs latitude -90..90 and longitude -180..180, or both blank.');
+    else location = { lat, lng };
+  }
+  if (errs.length) { detailErrors(errs); return; }
+  const work = clone(rec.v);
+  const t = work.sightings.find((x) => x.id === s.id);
+  t.timestamp = ts; t.flag = $('s-flag').value;
+  if (obs) t.observer = obs; else delete t.observer;
+  t.source = $('s-src').value.trim() || null;
+  t.notes = $('s-notes').value.trim() ? $('s-notes').value : null;
+  if (location) t.location = location; else delete t.location;
+  if (ser(work) === ser(rec.v)) { detailErrors(['Nothing changed.']); return; }
+  recomputeSeen({ v: work });
+  const v = validateVehicle(work, rec.key);
+  if (v.length) { detailErrors(v); return; }
+  work.lastUpdatedBy = EDITOR;
+  rec.v = work;
+  log(`Edited sighting ${s.id} of ${vname(rec)}`);
+  afterChange('Staged the sighting edit.');
+}
+
+function applyJson() {
+  const ref = detailRef;
+  let obj;
+  try { obj = JSON.parse($('d-json').value); } catch (err) { detailErrors([`Not valid JSON: ${err.message}`]); return; }
+  if (ref.level === 'vehicles') {
+    const rec = recs.get(ref.id);
+    const e = validateVehicle(obj, rec.key);
+    if (e.length) { detailErrors(e); return; }
+    if (ser(obj) === ser(rec.v)) { detailErrors(['Nothing changed.']); return; }
+    rec.v = obj; log(`Edited the JSON of ${vname(rec)}`);
+  } else if (ref.level === 'sightings') {
+    const row = rowsFor('sightings').find((r) => r.id === ref.id);
+    const work = clone(row.rec.v);
+    work.sightings[row.i] = obj;
+    const e = validateVehicle(work, row.rec.key);
+    if (e.length) { detailErrors(e); return; }
+    if (ser(work) === ser(row.rec.v)) { detailErrors(['Nothing changed.']); return; }
+    const probe = { v: work }; recomputeSeen(probe);
+    work.lastUpdatedBy = EDITOR;
+    row.rec.v = work; log(`Edited the JSON of sighting ${row.s.id} of ${vname(row.rec)}`);
+    detailRef = { level: 'sightings', id: `${row.rec.key}#${obj.id}` };
+  } else if (ref.level === 'plates') {
+    const pl = plates.get(ref.id);
+    const e = validatePlate(obj, ref.id);
+    if (e.length) { detailErrors(e); return; }
+    if (ser(obj) === ser(pl.p)) { detailErrors(['Nothing changed.']); return; }
+    pl.p = obj; log(`Edited the JSON of plate ${ref.id}`);
+  }
+  afterChange('Staged the JSON edit.');
+}
+
+function undoDetail() {
+  const ref = detailRef;
+  if (!ref) return;
+  if (ref.level === 'plates') {
+    const pl = plates.get(ref.id);
+    if (pl) { if (pl.orig === null) plates.delete(ref.id); else { pl.p = JSON.parse(pl.orig); pl.deleted = false; } }
+  } else if (ref.level === 'photos') photoDeletes.delete(ref.id);
+  else {
+    const key = ref.id.split('#')[0];
+    const rec = recs.get(key);
+    if (rec) { rec.v = JSON.parse(rec.orig); rec.deleted = false; }
+    if (ref.level === 'sightings') detailRef = { level: 'sightings', id: ref.id };
+  }
+  log(`Undid changes to ${ref.id}`);
+  afterChange('Undone for this record.');
+}
+
+// ====================== review and save ======================
+function reviewSave() {
+  const d = dirtySummary();
+  if (!d.total) return;
+  const eff = d.eff;
+  const errs = newErrors(eff);
+  const deletions = d.vRemoved + d.pDelete + d.photos;
+  const phrase = `SAVE ${deletions}`;
+  const lines = changeLog.slice(-300).map((x) => `<li>${esc(x)}</li>`).join('');
+  const removedWithPhotos = eff.removedRecs.some((r) => (r.v.sightings || []).some((s) => (s.photos || []).length));
+  showModal(`<h3>Review ${plural(d.total, 'file change')}</h3>
+    <div class="sum">
+      <b>${d.vChanged}</b><span>vehicle files rewritten</span>
+      <b>${d.vRemoved}</b><span>vehicle files removed</span>
+      <b>${d.pWrite}</b><span>plate files written (changed, new or re-pointed)</span>
+      <b>${d.pDelete}</b><span>plate files removed</span>
+      <b>${d.photos}</b><span>photo files deleted</span>
+      <b>${eff.vehicles.size}</b><span>vehicles remain; <code>data/index.json</code> is rewritten</span>
+    </div>
+    ${errs.length ? `<div class="warn"><b>Cannot save: these edits break the data rules.</b><ul>${errs.slice(0, 12).map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}
+    ${d.vRemoved / Math.max(1, recs.size) > 0.5 ? `<div class="warn"><b>This removes more than half of all vehicles.</b> Check again.</div>` : ''}
+    ${eff.plateActions.some((a) => a.action === 'repoint') ? `<div class="warn">${plural(eff.plateActions.filter((a) => a.action === 'repoint').length, 'plate file')} also belong to a vehicle that stays, so they are kept and re-pointed to it.</div>` : ''}
+    ${eff.photoKept.length ? `<div class="warn">${plural(eff.photoKept.length, 'photo')} still used by a sighting that stays, so ${eff.photoKept.length === 1 ? 'it is' : 'they are'} kept.</div>` : ''}
+    <details><summary>What was staged (${changeLog.length})</summary><ul>${lines || '<li class="muted">—</li>'}</ul></details>
+    ${removedWithPhotos ? `<label style="display:block;margin:10px 0 4px"><input type="checkbox" id="sv-photos" checked> Also delete the photo files of removed vehicles</label>` : ''}
+    <label style="display:block;margin:10px 0 4px"><input type="checkbox" id="sv-backup" checked> Download a backup ZIP of the originals first. Unzip it into the repo folder to put them back.</label>
+    ${deletions ? `<label style="display:block;margin:10px 0 4px">Files are being deleted. Type <b>${esc(phrase)}</b> to confirm:</label><input type="text" id="sv-confirm" autocomplete="off" spellcheck="false" placeholder="${esc(phrase)}">` : ''}
+    <div class="btns"><button id="sv-cancel">Cancel</button><button class="danger" id="sv-go" disabled>Write to disk</button></div>`);
+  const go = $('sv-go'), input = $('sv-confirm');
+  const update = () => { go.disabled = errs.length > 0 || (deletions > 0 && input.value.trim() !== phrase); };
+  if (input) input.addEventListener('input', update);
+  if ($('sv-photos')) $('sv-photos').addEventListener('change', () => {}); // read at save time
+  update();
+  $('sv-cancel').addEventListener('click', hideModal);
+  go.addEventListener('click', () => saveAll($('sv-backup').checked, $('sv-photos') ? $('sv-photos').checked : true));
+  if (input) input.focus();
+}
+
+async function saveAll(withBackup, deletePhotosOfRemoved) {
+  const go = $('sv-go'); if (go) { go.disabled = true; go.textContent = 'Working…'; }
+  const eff = effective(deletePhotosOfRemoved);
+  const when = nowIso();
+  const problems = [];
+  try {
+    const errs = newErrors(eff);
+    if (errs.length) { problems.push(...errs); throw new Error('the edits break the data rules'); }
+    // 1. nothing may have changed on disk since it was read (a git pull, another tool)
+    const stale = [];
+    const touchedV = [...recs.values()].filter((r) => r.deleted || recPending(r) === 'changed');
+    for (const rec of touchedV) {
+      let now = null;
+      try { now = await readText(await vDir.getFileHandle(`${rec.key}.json`)); } catch { now = null; }
+      if (now !== rec.orig) stale.push(`data/vehicles/${rec.key}.json ${now === null ? 'is gone' : 'changed on disk'}`);
+    }
+    for (const a of eff.plateActions) {
+      const pl = a.pl; let now = null;
+      if (pDir) { try { now = await readText(await pDir.getFileHandle(`${a.alias}.json`)); } catch { now = null; } }
+      if (now !== pl.orig) stale.push(`data/plates/${a.alias}.json ${now === null ? 'is gone' : 'changed on disk'}`);
+    }
+    for (const [alias, pl] of plates) if (pl.orig === null && !pl.deleted && pDir) {
+      try { await pDir.getFileHandle(`${alias}.json`); stale.push(`data/plates/${alias}.json now exists`); } catch { /* good: it does not exist */ }
+    }
+    if (stale.length) {
+      showModal(`<h3>Stopped: nothing was written</h3><p>The folder changed after it was read. Press <i>Reload from disk</i>; your staged changes will be lost, so note them first.</p><ul>${stale.slice(0, 20).map((p) => `<li>${esc(p)}</li>`).join('')}</ul><div class="btns"><button id="sv-cancel">Close</button></div>`);
+      $('sv-cancel').addEventListener('click', hideModal);
+      return;
+    }
+    // 2. backup of the originals of everything that will change
+    if (withBackup) {
+      const files = new Map();
+      for (const rec of touchedV) files.set(`data/vehicles/${rec.key}.json`, rec.orig);
+      const newFiles = [];
+      for (const a of eff.plateActions) { if (a.pl.orig !== null) files.set(`data/plates/${a.alias}.json`, a.pl.orig); }
+      for (const [alias, pl] of plates) if (pl.orig === null && !pl.deleted) newFiles.push(`data/plates/${alias}.json`);
+      for (const p of eff.photoOut) { const bytes = await readPhotoBytes(p); if (bytes) files.set(p, bytes); }
+      if (indexText) files.set('data/index.json', indexText);
+      files.set('CHANGES.txt', `Backup made ${when} by the record editor.\n\n${changeLog.join('\n')}\n`);
+      files.set('README.txt', `Backup made ${when}.\nTo undo: unzip into the repository folder (the one that contains data/), overwriting.\n${newFiles.length ? `Then delete these files, which the edit created:\n${newFiles.join('\n')}\n` : ''}Then run: python3 scripts/validate_records.py\n`);
+      download(makeZip(files), `record-edit-backup-${stamp()}.zip`);
+    }
+    // 3. write: plate files first, then vehicle files, then deletions, then the index
+    const done = { vWrite: 0, vDel: 0, pWrite: 0, pDel: 0, photo: 0 };
+    if (eff.plateActions.some((a) => a.action !== 'delete') || [...plates.values()].some((p) => p.orig === null && !p.deleted)) { if (!pDir) pDir = await sub(root, 'data/plates', true); }
+    for (const a of eff.plateActions) {
+      if (a.action === 'delete') continue;
+      try { await writeText(pDir, `${a.alias}.json`, ser(a.p)); done.pWrite++; } catch (err) { problems.push(`plates/${a.alias}: ${err.message}`); }
+    }
+    for (const rec of touchedV) {
+      if (rec.deleted) continue;
+      try { await writeText(vDir, `${rec.key}.json`, ser(rec.v)); done.vWrite++; } catch (err) { problems.push(`vehicles/${rec.key}: ${err.message}`); }
+    }
+    for (const rec of touchedV) {
+      if (!rec.deleted) continue;
+      try { await vDir.removeEntry(`${rec.key}.json`); done.vDel++; } catch (err) { if (err.name !== 'NotFoundError') problems.push(`vehicles/${rec.key}: ${err.message}`); }
+    }
+    for (const a of eff.plateActions) {
+      if (a.action !== 'delete') continue;
+      try { await pDir.removeEntry(`${a.alias}.json`); done.pDel++; } catch (err) { if (err.name !== 'NotFoundError') problems.push(`plates/${a.alias}: ${err.message}`); }
+    }
+    for (const p of eff.photoOut) {
+      try { await (await sub(root, p.split('/').slice(0, -1).join('/'))).removeEntry(p.split('/').pop()); done.photo++; }
+      catch (err) { if (err.name !== 'NotFoundError') problems.push(`${p}: ${err.message}`); }
+    }
+    try { const text = buildIndexText(eff.vehicles); if (text !== indexText) await writeText(dataDir, 'index.json', text); } catch (err) { problems.push(`data/index.json: ${err.message}`); }
+    // 4. report
+    hideModal();
+    const staged = changeLog.slice();
+    changeLog.length = 0;
+    rev++;
+    await reload(true);
+    changeLog.length = 0;
+    const text = `Wrote <b>${plural(done.vWrite, 'vehicle file')}</b> and ${plural(done.pWrite, 'plate file')}; removed ${plural(done.vDel, 'vehicle file')}, ${plural(done.pDel, 'plate file')} and ${plural(done.photo, 'photo')}. <code>data/index.json</code> was rewritten.` +
+      `${withBackup ? ' The backup ZIP was downloaded.' : ''}<br>Next: <code>python3 scripts/validate_records.py</code>, look at <code>git status</code>, then commit and push.`;
+    void staged;
+    if (problems.length) banner(`${text}<br><b>${plural(problems.length, 'problem')}:</b><pre>${esc(problems.join('\n'))}</pre>`, 'err', true);
+    else banner(text, 'ok', true);
+  } catch (err) {
+    hideModal();
+    banner(`Stopped: ${esc(err.message)}. ${problems.length ? '' : 'Some files may already be written. '}Press <i>Reload from disk</i> to see the current state.${problems.length ? `<pre>${esc(problems.join('\n'))}</pre>` : ''}`, 'err', true);
+  }
+}
+
+function discardAll() {
+  if (!confirm('Discard every staged change?')) return;
+  for (const rec of recs.values()) { rec.v = JSON.parse(rec.orig); rec.deleted = false; derive(rec); }
+  for (const [alias, pl] of [...plates]) { if (pl.orig === null) plates.delete(alias); else { pl.p = JSON.parse(pl.orig); pl.deleted = false; } }
+  photoDeletes.clear(); changeLog.length = 0;
+  afterChange('Discarded all staged changes.');
+}
+
+function downloadCsv() {
+  const [header, fn] = CSVROW[level];
+  const rows = [csvLine([...header, 'selected']), ...filtered.map((r) => csvLine([...fn(r), S().sel.has(r.id) ? 'yes' : '']))];
+  download(new Blob([`${rows.join('\n')}\n`], { type: 'text/csv' }), `${level}-${stamp()}.csv`);
+}
+
+// ====================== events ======================
+function switchLevel(lv) {
+  if (lv === level) return;
+  level = lv;
+  facetsBuilt = false;
+  closeDetail();
+  syncInputs();
+  renderAll(true);
+}
+let qTimer = null;
+$('q').addEventListener('input', (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => { S().q = e.target.value; S().limit = PAGE; renderAll(); }, 150); });
+for (const [id, k] of [['first-from', 'firstFrom'], ['first-to', 'firstTo'], ['last-from', 'lastFrom'], ['last-to', 'lastTo']]) {
+  $(id).addEventListener('change', (e) => { S()[k] = e.target.value; S().limit = PAGE; renderAll(); });
+}
+$('btn-clear').addEventListener('click', () => {
+  const s = S();
+  s.q = ''; s.facets = {}; s.facetFilter = {}; s.firstFrom = s.firstTo = s.lastFrom = s.lastTo = ''; s.only = false; s.limit = PAGE;
+  syncInputs();
+  renderAll(true);
+});
+$('btn-csv').addEventListener('click', downloadCsv);
+$('btn-open').addEventListener('click', pickFolder);
+$('btn-reopen').addEventListener('click', reopenLast);
+$('btn-reload').addEventListener('click', () => reload());
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-level]'); if (b) switchLevel(b.dataset.level); });
+$('facet-list').addEventListener('change', (e) => {
+  const t = e.target;
+  if (!t.dataset.fv) return;
+  const s = S();
+  const set = s.facets[t.dataset.fv] || (s.facets[t.dataset.fv] = new Set());
+  if (t.checked) set.add(t.value); else set.delete(t.value);
+  s.limit = PAGE;
+  renderAll();
+});
+$('facet-list').addEventListener('input', (e) => {
+  const t = e.target;
+  if (!t.dataset.ffilter) return;
+  S().facetFilter[t.dataset.ffilter] = t.value;
+  fillFacet(FACETS[level].find((f) => f.id === t.dataset.ffilter));
+});
+$('facet-list').addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (d.dataset && d.dataset.facet) { if (d.open) S().openFacets.add(d.dataset.facet); else S().openFacets.delete(d.dataset.facet); }
+}, true);
+$('thead').addEventListener('click', (e) => {
+  if (e.target.id === 'chk-all') {
+    const on = e.target.checked;
+    for (const r of filtered) toggleId(r.id, on);
+    renderAll();
+    return;
+  }
+  const th = e.target.closest('th[data-sort]');
+  if (!th || !th.dataset.sort) return;
+  const s = S();
+  if (s.sortKey === th.dataset.sort) s.sortDir *= -1; else { s.sortKey = th.dataset.sort; s.sortDir = ['name', 'plates', 'plate', 'path', 'status', 'type'].includes(th.dataset.sort) ? 1 : -1; }
+  renderAll();
+});
+$('tbody').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr.row');
+  if (!tr) return;
+  const id = tr.dataset.id;
+  const s = S();
+  if (e.target.dataset && e.target.dataset.pick) {
+    if (e.shiftKey && s.lastClicked) selectRange(id); else toggleId(id, e.target.checked);
+    s.lastClicked = id;
+    renderAll();
+    return;
+  }
+  if (e.target.closest('input')) return;
+  openDetail(level, id);
+});
+$('more').addEventListener('click', (e) => { if (e.target.id === 'btn-more') { S().limit += PAGE; renderResults(); renderSelbar(); } });
+$('selbar').addEventListener('click', (e) => { const b = e.target.closest('[data-sel]'); if (b && !b.disabled) selAction(b.dataset.sel); });
+$('actbar').addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && !b.disabled) runAction(b.dataset.act); });
+$('actbar').addEventListener('change', (e) => { if (e.target.id === 'act-field') $('act-valwrap').innerHTML = valueControl(e.target.value); });
+$('pending').addEventListener('click', (e) => { if (e.target.id === 'btn-review') reviewSave(); else if (e.target.id === 'btn-discard') discardAll(); });
+$('detail').addEventListener('click', (e) => {
+  const t = e.target;
+  if (t.id === 'btn-close') { closeDetail(); return; }
+  if (t.dataset.go) { const lv = t.dataset.go; L[lv].q = t.dataset.q || ''; L[lv].facets = {}; L[lv].firstFrom = L[lv].firstTo = L[lv].lastFrom = L[lv].lastTo = ''; switchLevel(lv); level === lv && (syncInputs(), renderAll(true)); return; }
+  const ref = detailRef;
+  if (!ref) return;
+  if (t.id === 'd-json-apply') applyJson();
+  else if (t.id === 'd-json-reset') openDetail(ref.level, ref.id);
+  else if (t.id === 'd-undo') undoDetail();
+  else if (t.id === 'd-remove') { opRemoveVehicles([ref.id]); }
+  else if (t.id === 'd-apply-sighting') applySightingForm();
+  else if (t.id === 'd-clear-loc') { const row = rowsFor('sightings').find((r) => r.id === ref.id); opClearLocation([row]); }
+  else if (t.id === 'd-remove-sighting') { const row = rowsFor('sightings').find((r) => r.id === ref.id); const id = ref.id; closeDetail(); opRemoveSightings([row], false); void id; }
+  else if (t.dataset.rmphoto) { opRemovePhotoRefs([t.dataset.rmphoto], Boolean(t.dataset.del)); }
+  else if (t.id === 'd-apply-plate') {
+    const pl = plates.get(ref.id); const rec = recs.get(pl.p.currentVehicleKey);
+    const base = $('p-state').value, code = $('p-code').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    const state = FEDERAL.includes(base) && code ? `${base}-${code}` : base;
+    const msg = renamePlate(rec, ref.id, state, $('p-num').value, $('p-type').value);
+    if (msg) { detailErrors([msg]); return; }
+    log(`Edited plate ${ref.id}`);
+    detailRef = { level: 'plates', id: aliasOf(state, $('p-num').value) };
+    afterChange('Staged the plate edit.');
+  } else if (t.id === 'd-remove-plate') { const id = ref.id; closeDetail(); opRemovePlates([id]); }
+  else if (t.id === 'd-photo-ref') opRemovePhotoRefs([ref.id], false);
+  else if (t.id === 'd-photo-del') opRemovePhotoRefs([ref.id], true);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (!$('modal').hidden) hideModal(); else if (detailRef) closeDetail(); } });
+window.addEventListener('beforeunload', (e) => { if (root && hasPending()) { e.preventDefault(); e.returnValue = ''; } });
+
+async function pickFolder() {
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'tracker-repo' });
+    await openFolder(handle);
+  } catch (err) { if (err.name !== 'AbortError') banner(`Could not open the folder: ${esc(err.message)}`, 'err'); }
+}
+async function reopenLast() {
+  const handle = await idb.get('lastHandle');
+  if (!handle) return;
+  try {
+    if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') { banner('Permission to the last folder was not granted.', 'err'); return; }
+    await openFolder(handle);
+  } catch (err) { banner(`Could not reopen the folder: ${esc(err.message)}`, 'err'); }
+}
+
+(async function init() {
+  if (!window.showDirectoryPicker) {
+    $('support').innerHTML = '<b>This browser cannot edit local folders.</b> Open this file in Chrome or Edge on a desktop.';
+    $('btn-open').disabled = true;
+    return;
+  }
+  if (await idb.get('lastHandle')) $('btn-reopen').hidden = false;
+})();
+</script>
+</body>
+</html>

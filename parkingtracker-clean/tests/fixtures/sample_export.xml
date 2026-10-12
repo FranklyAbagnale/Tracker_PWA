@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-16" standalone="yes" ?>
+<stopicenet_platetracker_database>
+
+
+
+<plate_file_SAMPLE001>
+<record>
+<alert_token>1700000000001</alert_token>
+<media>media/SAMPLE001/1700000000001.media/preview.png,media/SAMPLE001/1700000000001.media/index.html,media/SAMPLE001/1700000000001.media/100000000000001.png,</media>
+<vehicle_license>SAMPLE001</vehicle_license>
+<address>123 EXAMPLE ST ANYTOWN ST</address>
+<guest>1</guest>
+<vehicle_make>Black Ford Explorer</vehicle_make>
+<month>JAN</month>
+<day>2</day>
+<year>2026</year>
+<comments>Example comment describing a generic sighting.</comments>
+<datestamp>FRI JAN 2 2026 10:00:00 PST</datestamp>
+</record>
+<record>
+<alert_token>1700000000002</alert_token>
+<media>media/SAMPLE001/1700000000002.media/preview.jpeg,media/SAMPLE001/1700000000002.media/index.html,</media>
+<vehicle_license>SAMPLE001</vehicle_license>
+<address>456 SAMPLE AVE ANYTOWN ST</address>
+<guest>1</guest>
+<vehicle_make>Black Ford Explorer</vehicle_make>
+<month>JAN</month>
+<day>4</day>
+<year>2026</year>
+<comments>Second sighting of the same vehicle, different location.</comments>
+<datestamp>SUN JAN 4 2026 18:30:00 PST</datestamp>
+</record>
+</plate_file_SAMPLE001>
+
+
+
+<plate_file_SAMPLE002>
+<record>
+<alert_token>1700000000003</alert_token>
+<media>media/SAMPLE002/1700000000003.media/preview.png,media/SAMPLE002/1700000000003.media/index.html,media/SAMPLE002/1700000000003.media/100000000000002.png,media/SAMPLE002/1700000000003.media/100000000000003.png,</media>
+<vehicle_license>SAMPLE002</vehicle_license>
+<address>789 DEMO BLVD ANYTOWN ST</address>
+<guest>1</guest>
+<vehicle_make>Silver Chevy Tahoe</vehicle_make>
+<month>JAN</month>
+<day>3</day>
+<year>2026</year>
+<comments>Example comment describing a single generic sighting.</comments>
+<datestamp>SAT JAN 3 2026 09:15:00 PST</datestamp>
+</record>
+</plate_file_SAMPLE002>
+
+
+
+<plate_file_NOPLATE1700000000004>
+<record>
+<alert_token>1700000000004</alert_token>
+<media>media/NOPLATE1700000000004/1700000000004.media/preview.jpeg,media/NOPLATE1700000000004/1700000000004.media/index.html,media/NOPLATE1700000000004/1700000000004.media/100000000000004.jpeg,</media>
+<vehicle_license>NOPLATE</vehicle_license>
+<address>321 SAMPLE CT ANYTOWN ST</address>
+<guest>1</guest>
+<vehicle_make>White Dodge Ram</vehicle_make>
+<month>JAN</month>
+<day>5</day>
+<year>2026</year>
+<comments>Example comment describing a vehicle observed without plates.</comments>
+<datestamp>MON JAN 5 2026 22:45:00 PST</datestamp>
+</record>
+</plate_file_NOPLATE1700000000004>
+
+
+
+<plate_file_SAMPLE003>
+<record>
+<alert_token>1700000000005</alert_token>
+<media>media/SAMPLE003/1700000000005.media/preview.png,media/SAMPLE003/1700000000005.media/index.html,</media>
+<vehicle_license>SAMPLE003</vehicle_license>
+<address>654 PLACEHOLDER RD ANYTOWN ST</address>
+<guest>1</guest>
+<vehicle_make>Grey Toyota Highlander</vehicle_make>
+<month>JAN</month>
+<day>6</day>
+<year>2026</year>
+<comments>Example comment with no media attachments beyond preview and index.</comments>
+<datestamp>TUE JAN 6 2026 07:05:00 PST</datestamp>
+</record>
+<record>
+<alert_token>1700000000006</alert_token>
+<media></media>
+<vehicle_license>SAMPLE003</vehicle_license>
+<address>654 PLACEHOLDER RD ANYTOWN ST</address>
+<guest>1</guest>
+<vehicle_make>Grey Toyota Highlander</vehicle_make>
+<month>JAN</month>
+<day>6</day>
+<year>2026</year>
+<comments>Follow-up submission with an empty media element, which the parser tolerates.</comments>
+<datestamp>TUE JAN 6 2026 07:10:00 PST</datestamp>
+</record>
+</plate_file_SAMPLE003>
+
+
+
+</stopicenet_platetracker_database>

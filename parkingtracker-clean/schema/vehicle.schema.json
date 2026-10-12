@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vehicle.schema.json",
+  "title": "VehicleRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "vehicleKey",
+    "displayName",
+    "color",
+    "make",
+    "bodyStyle",
+    "distinguishing",
+    "plateAliases",
+    "flag",
+    "sightings",
+    "firstSeen",
+    "lastSeen"
+  ],
+  "properties": {
+    "vehicleKey": { "type": "string", "pattern": "^VEH_[0-9a-f]{8}$" },
+    "displayName": { "type": "string", "minLength": 1 },
+    "color": { "type": "string", "minLength": 1 },
+    "make": { "type": "string", "minLength": 1 },
+    "model": { "type": ["string", "null"] },
+    "siteChecks": {
+      "description": "What a person found when running the plate on a public lookup site, by site id.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]{2,20}$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "checkedAt"],
+        "properties": {
+          "status": { "enum": ["verified", "not_found", "wrong"] },
+          "checkedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "year": { "type": ["integer", "null"], "minimum": 1900, "maximum": 2100 },
+    "bodyStyle": { "enum": ["sedan", "suv", "truck", "van", "coupe", "hatchback", "unknown"] },
+    "distinguishing": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "distinguishingNotes": { "type": ["string", "null"] },
+    "vin": { "type": ["string", "null"] },
+    "plateAliases": {
+      "description": "Plate keys: <state>-<plate>, e.g. CA-7ABC123, SON-ABC123 or GOV-DHS-12345 (the state is everything before the last dash). XX means the state is not known. See plate.schema.json for the states.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^(?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]{1,20}$" },
+      "uniqueItems": true
+    },
+    "flag": { "$ref": "#/$defs/flag" },
+    "sightings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/sighting" }
+    },
+    "firstSeen": { "type": "string", "format": "date-time" },
+    "lastSeen": { "type": "string", "format": "date-time" },
+    "plateLookup": {
+      "description": "Registration-data answer for one plate, stored only when it agreed with the make and model entered. No VIN.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plate", "year", "make", "model", "checkedAt"],
+      "properties": {
+        "plate": { "type": "string", "pattern": "^(?:[A-Z]{2,3}|(?:USG|GOV)-[A-Z0-9]{1,8})-[A-Z0-9]{1,20}$" },
+        "year": { "type": ["integer", "null"], "minimum": 1900, "maximum": 2100 },
+        "make": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "checkedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "possibleDuplicate": { "type": "boolean" },
+    "lastUpdatedBy": { "type": ["string", "null"], "maxLength": 40 },
+    "editedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "flag": { "enum": ["unknown", "suspected", "confirmed", "cleared", "pigs"] },
+    "sighting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "timestamp", "photos", "flag"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^S_[0-9a-f]{8}$" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": {
+          "description": "Optional: a declined location permission is a valid state (ADR-007).",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["lat", "lng"],
+              "properties": {
+                "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+                "lng": { "type": "number", "minimum": -180, "maximum": 180 },
+                "manual": { "type": "boolean" }
+              }
+            }
+          ]
+        },
+        "photos": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^photos/[A-Za-z0-9_.-]+\\.jpg$" }
+        },
+        "flag": { "$ref": "#/$defs/flag" },
+        "notes": { "type": ["string", "null"] },
+        "source": { "type": ["string", "null"] },
+        "recordedAt": { "type": "string", "format": "date-time" },
+        "editedAt": { "type": "string", "format": "date-time" },
+        "observer": { "type": ["string", "null"], "maxLength": 40 }
+      }
+    }
+  }
+}
